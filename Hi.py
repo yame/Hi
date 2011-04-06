@@ -1,5 +1,5 @@
 '''
-Usage:
+Usage: Hi,Yame
 
 '''
 import sys
