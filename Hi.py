@@ -1,5 +1,5 @@
 '''
-Usage:
+Usage:Haha
 
 '''
 import sys
