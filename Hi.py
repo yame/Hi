@@ -5,7 +5,7 @@ Usage: Hi,Yame
 '''
 import sys
 
-#test
+#test zym
 print sys.path,'ok'
 
 print 'Ok;'
