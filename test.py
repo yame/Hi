@@ -4,7 +4,7 @@ Usage:
 '''
 def Test():
 	'''
-	Test Function name
+	Test Function
 	'''
 	print 'Oh'
 	
