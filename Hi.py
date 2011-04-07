@@ -5,4 +5,8 @@ Usage: Hi,Yame
 '''
 import sys
 
-print sys.path
+#test
+print sys.path,'ok'
+
+print 'Ok;'
+
