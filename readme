@@ -1,2 +1,5118 @@
-Hi,I'm studying git.
-OK,git stash
+##|TYPE Template
+##|UNIQUEID 7e827407-06c2-498d-889d-cd9836cebb9f
+##|TITLE My
+##|NAMESPACE NHibernate
+##|SOURCE_TYPE Source
+##|OUTPUT_LANGUAGE C#
+##|COMMENTS_BEGIN
+Improved NHibernate lujan99 0.9.20 (c) by lujan99@usa.net with:
+- Interfaces generation
+- COM Visible attribute
+- Constom XML serializable collections
+- Project file generation
+- Database prefix removal
+
+New in v1.3:
+ICloneable support added as generation option
+
+New in 1.3.4
+Constructors with non nullables fields
+String length validation
+Constructors with id fields
+
+New in 1.4 - stable
+bug fixed - Constructors with id fields
+##|COMMENTS_END
+##|GUI_ENGINE .Net Script
+##|GUI_LANGUAGE C#
+##|GUI_BEGIN
+<%#REFERENCE System.Windows.Forms.dll,System.Xml.dll,System.Drawing.dll  %>
+<%#NAMESPACE System, System.IO,System.Drawing,System.Globalization,System.Text, System.Collections, Zeus, Zeus.UserInterface, Zeus.DotNetScript ,System.Windows.Forms,System.Xml,System.Xml.XPath,System.Text.RegularExpressions,Dnp.Utils %>
+
+public class GeneratedGui : DotNetScriptGui
+{
+  public GeneratedGui(ZeusContext context) : base(context) {}
+	public override void Setup() 
+		{
+			l99_form form = new l99_form(MyMeta, context.Input); 
+	
+			if (form.ShowDialog() != DialogResult.OK) 
+			{
+				ui.IsCanceled = true;
+			}
+		}
+
+
+}
+
+	public partial class l99_form : Form
+	{
+		private l99_Info info;
+
+#if (OVER_VISUAL)
+		private Hashtable input = new Hashtable();
+#else
+		private IZeusInput input;
+#endif
+		private IDatabase database;
+		private dbRoot myMeta;
+		private bool _ismodified;
+
+		Object[] options = new object[] {
+            "Create mapping files",
+            "Create class files",
+			"Use NH 2.2 mapping",
+            "Only one map file",
+            "Include Tables",
+            "Include Views",
+            "Use null in the constructor",
+            "Create Equal and Hash codes",
+			"Create Serialize codes",			
+            "Enable null types",
+            "Enable Lazy loading",
+            "Create as read only",
+            "Create Repository Code",
+			"Use ComVisible attribute",
+			"Apply Pascal case",
+			"Use .NET Generics",
+			"Implement ICloneable"
+		};
+
+		String[] options_ids = new String[] {
+            "chkMapping",
+            "chkClass",
+			"chkMapping2_2",
+            "chkOneMappFile",
+            "chkIncTables",
+            "chkIncViews",
+            "chkUseNull",
+            "chkEqualsHashCode",
+			"chkSerializeCode",
+            "chkEnableNullTypes",
+            "chkLazyClass",
+            "chkReadOnly",
+            "chkRepository",
+			"chkCOMVisible",
+			"chkApplyPascalCase",
+			"chkUseGenerics",
+			"chkImplementICloneable"};
+
+#if (OVER_VISUAL)
+		public l99_form(dbRoot myMeta)
+		{
+			this.myMeta = myMeta;
+			InitializeComponent();
+		}
+#else
+		public l99_form(dbRoot myMeta, IZeusInput input)
+		{
+			this.myMeta = myMeta;
+			this.input  = input;
+			InitializeComponent();
+		}	
+#endif
+		private void l99_form_Load(object sender, EventArgs e)
+		{
+			int n;
+			toolTip.SetToolTip(bMarkIdColTable,
+				"Select a property (column) will be considered ID (for id tag)");
+			toolTip.SetToolTip(bMarkAsId,
+				"Select a property (column) will be considered ID (for id tag)");
+			toolTip.SetToolTip(	bFkNewForeign, 
+				"If select a object/table define a zero-to-many,\nif select a property/column define a one-to-many");
+			info = new l99_Info(Path.Combine(Directory.GetCurrentDirectory(),"OHM_hibernate.info.xml"));
+
+			if (!info.HasValues)
+			{ //setting default:
+				info.chkClass = true;
+				info.chkEnableNullTypes = true;
+				info.chkIncTables = true;
+				info.chkIncViews = false;
+				info.chkMapping = true;
+				info.chkMapping2_2 = false;
+				info.chkLazyClass = true;
+				info.chkOneMappFile = false;
+				info.chkUseNull = true;
+				info.chkEqualsHashCode = true;
+				info.chkSerializeCode = false;
+				info.chkCOMVisible = false;
+				info.chkApplyPascalCase = true;
+				info.chkUseGenerics = true;
+				info.chkImplementICloneable = true;
+
+				info.memberPrefix = "_";
+				info.classNamespace = "nhNamespace";
+				info.assemblyName = "nhAssembly";
+#if (!OVER_VISUAL)
+				info.outputPath = input["defaultOutputPath"] as string;
+#endif
+
+			}
+			
+			l99_Info._chkApplyPascalCase = info.chkApplyPascalCase;
+			this.lblTable.Text = "<>";
+			this.lstCols.Visible = this.lstFKTable.Visible = this.lstFKcols.Visible = false;
+
+			this.chkOptions.Items.Clear();
+			this.chkOptions.Items.AddRange(options);
+			for (n = 0; n < options_ids.Length; n++)
+			{
+				string name = options_ids[n];
+				string val = info[name];
+				bool st= (val!=String.Empty)?bool.Parse(val):false;
+				chkOptions.SetItemChecked(n, st);
+			}
+
+			iOutputPath.Text = info.outputPath;
+			iNamespace.Text = info.classNamespace;
+			iAssembly.Text = info.assemblyName;
+			iInherit.Text = info.inheritFrom;
+			iTimestamp.Text = info.timestampClass;
+			iCreatedDateField.Text = info.createdDateColumn;
+			iPrefix.Text = info.memberPrefix;
+			chkGenerateProjectFile.Checked = info.generateProjectFile;
+			dlIDEVersion.SelectedIndex = int.Parse(info.ideVersion);
+			iDBPrefix.Text = info.dbPrefix;
+			
+			this.iDatabase.DataSource = this.myMeta.Databases;
+			this.iDatabase.DisplayMember = "Name";
+
+			string db = info.chooseDatabase;
+			this.database = null;
+			if (db != String.Empty)
+			{
+				this.iDatabase.SelectedIndex = this.iDatabase.FindStringExact(db);
+				this.database = this.iDatabase.SelectedValue as IDatabase;
+			}
+			if (this.database == null && this.myMeta.DefaultDatabase != null)
+			{
+				this.database = this.myMeta.DefaultDatabase;
+				this.iDatabase.SelectedIndex = this.iDatabase.FindStringExact(this.myMeta.DefaultDatabase.Name);
+			}
+			UpdateAll(this.database);
+            
+		}
+
+		private void OK_Click(object sender, EventArgs e)
+		{
+			SaveTreeView();
+			if (input["configFile"] == null && this._ismodified)
+			{
+				DialogResult x = MessageBox.Show("Session not Saved!, Save??", "Confirmation", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+				if (x == DialogResult.Cancel)
+					return;
+				if (x == DialogResult.Yes)
+				{
+					info.Save();
+					input["configFile"] = info.FileName;
+				}
+				
+			}
+#if (OVER_VISUAL)
+			HbmGenerator.Build(info, database);
+#endif
+			this.DialogResult = DialogResult.OK;
+			this.Close();
+		}
+
+
+		private void chkGenerateProjectFile_CheckedChanged(object sender, System.EventArgs e)
+		{
+			lblIDEVersion.Enabled = chkGenerateProjectFile.Checked;
+			dlIDEVersion.Enabled = chkGenerateProjectFile.Checked;
+		}
+
+		private void Dir_Click(object sender, EventArgs e)
+		{
+			this.pathFinder.SelectedPath = this.iOutputPath.Text;
+			if (this.pathFinder.ShowDialog(this) == DialogResult.OK)
+			{
+				this.iOutputPath.Text = this.pathFinder.SelectedPath;
+			}
+
+		}
+
+		private void Cancel_Click(object sender, EventArgs e)
+		{
+			this.DialogResult = DialogResult.Cancel;
+			this.Close();
+		}
+		private TreeNode NodeProperty(IColumn c)
+		{
+			return NodeProperty(new TreeNode(), c);
+		}
+        private TreeNode NodeProperty(TreeNode nd,IColumn c)
+        {
+            nd.Text = c.Alias= Info.ToPropertyName(c.Alias);
+            nd.Tag = c;
+			nd.Name = c.Name;
+			nd.Checked = false; //not id.
+			nd.ForeColor = Color.Black;
+            nd.NodeFont = new Font(this.treeTa.Font, FontStyle.Regular);
+			nd.ToolTipText = "mandatory";
+			if (c.IsInPrimaryKey || c.IsAutoKey)
+			{
+			//	nd.ForeColor = Color.Green;
+			}
+			if (c.IsNullable || c.HasDefault)
+			{
+				nd.ForeColor = Color.Gray;
+				nd.ToolTipText = "optional";
+			}
+            return nd;
+        }
+
+		private void MapViewFromDb(TreeNode t, IView table, XmlNode nt)
+		{
+            t.Checked = true;
+			if (table == null) table = t.Tag as IView;
+            t.Tag = table;
+			t.ForeColor = Color.Black;
+			t.Name = table.Name;
+			t.Text = table.Alias= Info.ToPropertyName( table.Alias);
+            t.Nodes.Clear();
+            TreeNode vc;
+			foreach (IColumn c in table.Columns)
+			{
+				XmlNode nc = null;
+				if (nt != null)
+				{
+					nc = nt.SelectSingleNode(String.Format("c[@name='{0}']", c.Name));
+					if (nc == null)
+						continue;
+					if (nc.Attributes["alias"] != null)
+						c.Alias = nc.Attributes["alias"].Value;
+				}
+				vc = NodeProperty(c);
+				t.Nodes.Add(vc);
+				if (nc != null && nc.Attributes["id"] != null && Boolean.Parse(nc.Attributes["id"].Value))
+				{
+					MarkAsId(vc);
+				}
+			}
+
+		}
+
+		private void MapTableId(XmlNode nt, TreeNode t)
+		{
+			UTable ut=null;
+			ITable table = t.Tag as ITable;
+			if (nt != null)
+			{
+				nt = nt.SelectSingleNode("id");
+				if (nt != null)
+					ut = UTable.Create(database, nt);
+			}
+			else if (table.PrimaryKeys.Count > 1)
+				ut = new UTable(table,true);
+
+			if (ut == null)
+				return;
+
+			TreeNode npk = t.Nodes.Add(ut.Alias);
+			npk.Tag = ut;
+
+            foreach (object o in ut.Columns)
+            {
+                
+                if (o is IColumn)
+                {
+                    npk.Nodes.Add(NodeProperty(o as IColumn));
+                }
+                else
+                {
+                    NodeFKNew(npk, o as IForeignKey);
+                }
+            }
+            MarkAsId(npk);
+
+		}
+		private TreeNode MapTableFromDb(ITable table, XmlNode nt)
+        {
+			this.lblHelp.Text = "Mapping " + table.Name;
+			Application.DoEvents();
+			
+			TreeNode t = null;
+			foreach (TreeNode x in this.treeTa.Nodes)
+			{ //find table in tree, exists?
+				if (x.Tag == table)
+				{
+					t = x;//yes!
+					break;
+				}
+			}
+			if(t==null)//no, create a node.
+				t = this.treeTa.Nodes.Add(RemoveDBPrefix(Info.ToPropertyName(table.Alias)));
+			
+            t.Checked = true;
+            t.Tag = table;
+            t.Text = table.Alias= RemoveDBPrefix(Info.ToPropertyName( table.Alias));
+            t.Name = RemoveDBPrefix(table.Name);
+            t.Nodes.Clear();
+
+			MapTableId(nt, t);
+
+            UTableCols columns= new UTableCols();
+            UTableCols columnsId = new UTableCols();
+            if (nt != null)
+            {
+                foreach (XmlNode nc in nt.SelectNodes("c | fk"))
+                {
+                    Object o = null;
+                    if (nc.Name == "c")
+                    {
+                        IColumn c= table.Columns[nc.Attributes["name"].Value];
+                        if (c == null) continue;
+                        if (nc.Attributes["alias"] != null)
+                            c.Alias = nc.Attributes["alias"].Value;
+                        columns.Add(c); 
+                        o = c;
+                    }
+                    else
+                    {
+                        IForeignKey fk = Info.GetFK(table, nc);
+                        if (fk != null)
+                        {
+                            columns.Add(fk); 
+                            o = fk;
+                        }
+                    }
+                    if (o!=null && nc.Attributes["id"] != null && Boolean.Parse(nc.Attributes["id"].Value))
+                        columnsId.Add(o);
+                }
+            }
+            else
+            {
+                foreach (IColumn c in table.Columns)
+                {
+                    if (table.PrimaryKeys[c.Name] != null && table.PrimaryKeys.Count > 1)
+                        continue; //already mapped as composite id
+                    object o = null;
+                    IForeignKey fk = Info.IsColumnGenerateForeign(c);
+                    if (fk != null)
+                    {
+                        if (columns.IndexOfKey(fk.Name) < 0)
+                        {
+                            fk.Alias = Info.ApplyPascalCase(c.Name);
+                            columns.Add(fk);
+                            o = fk;
+                        }
+                    }
+                    else if (columns.IndexOfKey(c.Name) < 0)
+                    {
+                        columns.Add(c);
+                        o = c;
+                    }
+                    if (o != null && (table.PrimaryKeys[c.Name] != null ||
+                        (table.PrimaryKeys.Count==0 && c.IsAutoKey)))
+                        columnsId.Add(o);
+                }
+                //now zero to many relations:
+                foreach (IForeignKey fk in table.ForeignKeys)
+                {
+                    if (fk.ForeignTable.Name == table.Name)
+                        continue;
+                    fk.Alias = fk.Name;
+                    columns.Add(fk);
+                }
+            }
+            foreach (object o in columns)
+            {
+                TreeNode nd;
+                if (o is IColumn)
+                {
+                    nd=NodeProperty(o as IColumn);
+                    t.Nodes.Add(nd);
+
+                }
+                else
+                {
+                    nd= NodeFKNew(t, o as IForeignKey);
+                }
+                if(columnsId.IndexOf(o)>=0)
+                    MarkAsId(nd);
+            }
+            return t;
+        }
+
+        TreeNode NodeFKNew(TreeNode ntable,IForeignKey fk)
+		{
+			TreeNode nd = new TreeNode();
+			ntable.Nodes.Add(nd);
+			return NodeFK(nd, fk);
+		}
+        TreeNode NodeFK(TreeNode nd,IForeignKey fk )
+        {
+			bool type;
+			if (fk is UserFk)
+				type = !((fk as UserFk).IsPrimary);
+			else
+			{
+				TreeNode parent = nd.Parent.Tag is UTable ? nd.Parent.Parent : nd.Parent;
+				TRelation tr = new TRelation(parent.Tag as ITable, fk);
+				type = (fk.ForeignTable.Name == (parent.Tag as ITable).Name);
+				if (tr.IsSelfReference)
+					type = tr.IsManyToOne;
+                if (fk.Alias == (parent.Tag as ITable).Alias)
+                    fk.Alias += "Member";
+                fk.Alias = RemoveDBPrefix(Info.ToPropertyName(fk.Alias));
+			}
+			nd.Text = fk.Alias ;
+            nd.NodeFont = new Font(this.treeTa.Font, FontStyle.Regular);
+			nd.ForeColor = (type) ? Color.Blue : Color.Orange;
+            nd.Tag = fk;
+			if(type)
+			{
+				nd.Name = Info.ApplyPascalCase(fk.ForeignColumns[0].Alias);
+			} else
+			{
+				nd.Name = Info.ApplyPascalCase(fk.Alias);
+			}
+            /*
+             * (fk.ForeignTable.Name == table.Name)  <many-to-one ../>
+             *      la columna refiere a un objeto en otra tabla.
+             * (fk.PrimaryTable.Name == table.Name)  <set .../>
+             *      la tabla foranea hace referencia a una columna de table.Name
+             */
+            return nd;
+        }
+
+
+		private void updateTreeViewVws()
+		{
+			IDatabase database = this.iDatabase.SelectedValue as IDatabase;
+			if (database == null)
+				return;
+			this.treeVws.BeginUpdate();
+			this.treeVws.Nodes.Clear();
+			XmlNode nt,nts=info.doc.DocumentElement.SelectSingleNode(
+				String.Format("database[@db='{0}' and @driver='{1}']", 
+					database.Name, database.Root.DriverString));
+			TreeNode t;
+			foreach (IView vw in database.Views)
+			{
+				//default unmapped:
+				vw.Alias = Info.ToPropertyName(vw.Alias);
+				t = this.treeVws.Nodes.Add( vw.Alias);
+				t.Tag = vw;
+				t.Name = vw.Name;
+				t.ForeColor = Color.Gray;
+				t.Checked = false;
+				if (nts == null)
+				{ //don't have config for view:
+					continue;
+				}
+				nt = nts.SelectSingleNode(String.Format("v[@name='{0}']", vw.Name));
+				if (nt == null)
+				{ //unmapped
+					continue;
+				}
+
+				if (nt.Attributes["alias"] != null)
+					vw.Alias = nt.Attributes["alias"].Value;
+				MapViewFromDb(t, vw, nt);
+			}
+			this.treeVws.EndUpdate();
+		}
+
+		private string RemoveDBPrefix(string dbObjectName)
+		{
+			if(info.dbPrefix.Length > 0 && dbObjectName.StartsWith(info.dbPrefix))
+			{
+				return dbObjectName.Substring(info.dbPrefix.Length);
+			}
+			
+			return dbObjectName;
+		}
+
+		private void updateTreeViewTables()
+		{
+			IDatabase database = this.iDatabase.SelectedValue as IDatabase;
+			if (database == null)
+				return;
+			this.treeTa.BeginUpdate();
+			this.treeTa.Nodes.Clear();
+			XmlNode nt,nts=info.doc.DocumentElement.SelectSingleNode( 
+                String.Format("database[@db='{0}' and @driver='{1}']", database.Name,
+					database.Root.DriverString));
+			string message = String.Format("db:{0} driver:{1}",
+					database.Name, myMeta.DriverString); 
+			if (nts != null )
+			{
+				if(nts.Attributes["date"] != null)
+					message = String.Format("Using session date:{0} db:{1}/{2}", 
+					(new DateTime(Int64.Parse(nts.Attributes["date"].Value))).ToString(),
+					database.Name, myMeta.DriverString);
+				if (nts.Attributes["version"] == null)
+				{
+					message = "Your saved format session is obsolete";
+					nts = null;
+				}
+				
+			}
+
+			TreeNode t;
+			foreach (ITable table in database.Tables)
+            {
+                if (nts == null)
+                { //don't have config for database:
+                    MapTableFromDb(table, null);
+                    continue;
+                }
+                nt = nts.SelectSingleNode(String.Format("t[@name='{0}']", table.Name));
+                if (nt == null)
+                { //unmapped
+                    t = this.treeTa.Nodes.Add(Info.ToPropertyName(table.Alias));
+                    t.Name = RemoveDBPrefix(table.Name);
+                    t.Checked = false;
+                    t.Tag = table;
+                    t.ForeColor = Color.Gray;
+                    continue;
+                }
+
+                if (nt.Attributes["alias"] != null)
+                    table.Alias = nt.Attributes["alias"].Value;
+                t = MapTableFromDb(table, nt);
+            }
+			//if( nts==null)//unmap all Foreign table for ManyToMany relations:
+			foreach (ITable table in database.Tables)
+			{
+				foreach (IForeignKey fk in table.ForeignKeys)
+				{
+					TRelation tr = new TRelation(table, fk);
+
+					if (tr.IsManyToMany )
+					{
+						foreach (TreeNode nd in this.treeTa.Nodes)
+						{
+							if (nd.Name == tr.ForeignTable.Name)
+							{
+								if (nts == null)
+									unmapTable(nd); 
+								if(nd.Nodes.Count ==0)
+									nd.Name = "#" + nd.Name;
+							}
+						}
+						
+					}
+				}
+			}
+			this.treeTa.EndUpdate();
+			this.lblHelp.Text = message;
+		}
+
+		private void iDatabase_SelectionChangeCommitted(object sender, EventArgs e)
+		{
+			UpdateAll(this.iDatabase.SelectedValue as IDatabase);
+		}
+		private void UpdateAll(IDatabase database)
+		{
+			if (database == null) return;
+			this.database = database;
+            Application.UseWaitCursor = true;
+			this.pathTView.Text = "<<< Wait... >>>";
+			Application.DoEvents();
+			this.tabs.Controls.Clear();
+			if (database.Tables.Count > 0)
+				this.tabs.Controls.Add(this.tabRel);
+			if (database.Views.Count > 0)
+				this.tabs.Controls.Add(this.tabViews);
+			this.tabs.Controls.Add(this.tabSetting);
+
+			updateTreeViewVws();
+            updateTreeViewTables();
+			UpdateInfoView();
+			UpdateInfoNode(null);
+			this.pathTView.Text = "<< Ready >>";
+            Application.UseWaitCursor = false;
+		}
+
+
+
+
+		private void chkOptions_SelectedIndexChanged(object sender, EventArgs e)
+		{
+			this._ismodified = true;
+			string curItem = chkOptions.SelectedItem.ToString();
+			int index = chkOptions.FindString(curItem);
+            curItem = options_ids[index];
+            switch (curItem)
+            {
+                case "chkIncViews": chkOptions.GetItemChecked(index); break;
+				case "chkApplyPascalCase": info.chkApplyPascalCase = !info.chkApplyPascalCase; l99_Info._chkApplyPascalCase = info.chkApplyPascalCase; break;
+            }
+		}
+
+		private void bSave_Click(object sender, EventArgs e)
+		{
+			SaveTreeView();
+			info.Save();
+			input["configFile"] = info.FileName;
+			this.lblHelp.Text = "Session Saved:" + info.FileName;
+				
+		}
+
+		private bool SaveIForeignKey(TreeNode nx, XmlNode nt)
+		{
+			if (!(nx.Tag is IForeignKey))
+				return false;
+			IForeignKey fk = nx.Tag as IForeignKey;
+			XmlNode nfk = info.AddValue(nt, "fk");
+			info.AddAtt(nfk, "alias", nx.Text);
+			info.AddAtt(nfk, "name", fk.Name);
+			if (nx.Checked)
+				info.AddAtt(nfk, "id", true.ToString());
+			UserFk ufk = fk as UserFk;
+			if (ufk != null)
+			{
+				XmlNode nft;
+				nft = info.AddValue(nfk, "p");
+				info.AddAtt(nft, "name", ufk.PrimaryTable.Name);
+				foreach (IColumn cc in ufk.PrimaryColumns)
+					info.AddAtt(info.AddValue(nft, "c"), "name", cc.Name);
+
+				nft = info.AddValue(nfk, "f");
+				info.AddAtt(nft, "name", ufk.ForeignTable.Name);
+				foreach (IColumn cc in ufk.ForeignColumns)
+					info.AddAtt(info.AddValue(nft, "c"), "name", cc.Name);
+
+				if (ufk.IsOneToOne)
+					info.AddAtt(nfk, "o2o", true.ToString());
+				if (ufk.IsManyToMany)
+					info.AddAtt(nfk, "m2m", true.ToString());
+				info.AddAtt(nfk, "z2m", ufk.IsPrimary.ToString());
+				info.AddAtt(nfk, "user", true.ToString());
+
+
+			}
+			return true;
+		}
+		private bool SaveIColumn(TreeNode nx,XmlNode nt)
+		{
+			if (!(nx.Tag is IColumn))
+				return false;
+			
+			IColumn c = nx.Tag as IColumn;
+			if (nx.Text == nx.Parent.Text)
+				nx.Text = nx.Text + "Member";
+			XmlNode nc = info.AddValue(nt, "c");
+			info.AddAtt(nc, "alias", nx.Text);
+			info.AddAtt(nc, "name", c.Name);
+			if (nx.Checked)
+				info.AddAtt(nc, "id", true.ToString());
+			return true;
+			
+		}
+		private void SaveTreeView()
+		{
+			IDatabase database = this.iDatabase.SelectedValue as IDatabase;
+			XmlNode nts = info.doc.DocumentElement.SelectSingleNode(
+				String.Format("database[@db='{0}' and @driver='{1}']", database.Name,
+					database.Root.DriverString));
+			if (nts != null)
+				nts.ParentNode.RemoveChild(nts);
+			//info.RemoveAll();
+			info.chooseDatabase = database.Name;
+			info.outputPath = iOutputPath.Text;
+			info.classNamespace = iNamespace.Text;
+			info.assemblyName = iAssembly.Text;
+			info.inheritFrom = iInherit.Text;
+			info.timestampClass = iTimestamp.Text;
+			info.createdDateColumn = iCreatedDateField.Text;
+			info.memberPrefix = iPrefix.Text;
+			info.generateProjectFile = chkGenerateProjectFile.Checked;
+			info.ideVersion = dlIDEVersion.SelectedIndex.ToString();
+			info.dbPrefix = iDBPrefix.Text;
+
+			for (int n = 0; n < options_ids.Length; n++)
+			{
+				info[options_ids[n]] = chkOptions.GetItemChecked(n).ToString();
+			}
+            nts = info.AppendChild("database");
+			info.AddAtt(nts, "db", database.Name);
+            info.AddAtt(nts, "driver", myMeta.DriverString);
+			info.AddAtt(nts, "date", DateTime.Now.Ticks.ToString());
+			info.AddAtt(nts, "version", "1");
+            foreach (TreeNode nd in this.treeTa.Nodes)
+			{
+				if (!nd.Checked)
+					continue;
+				ITable t = nd.Tag as ITable;
+				XmlNode nt= info.AddValue(nts, "t");
+				info.AddAtt(nt, "alias", nd.Text);
+				info.AddAtt(nt, "name", t.Name);
+				foreach (TreeNode nx in nd.Nodes)
+				{
+					if (nx.Tag is UTable)
+					{
+						UTable ut = nx.Tag as UTable;
+						XmlNode nid = info.AddValue(nt, "id");
+						info.AddAtt(nid, "alias", nx.Text);
+						info.AddAtt(nid, "name", ut.Name);
+						info.AddAtt(nid, "table", ut.Owner.Name);
+						foreach (TreeNode ny in nx.Nodes)
+						{
+							if (!SaveIColumn(ny, nid))
+								SaveIForeignKey(ny, nid);
+						}
+						continue;
+					}
+					if (!SaveIColumn(nx, nt))
+						SaveIForeignKey(nx, nt);
+				}
+
+			}
+
+			foreach (TreeNode nd in this.treeVws.Nodes)
+			{
+				if (!nd.Checked)
+					continue;
+				XmlNode nvw = info.AddValue(nts, "v");
+				info.AddAtt(nvw, "name", (nd.Tag as IView).Name);
+				info.AddAtt(nvw, "alias", nd.Text);
+				foreach (TreeNode nx in nd.Nodes)
+				{
+					IColumn c = nx.Tag as IColumn;
+					if(nx.Text==nx.Parent.Text)
+                        nx.Text = nx.Text + "Member";
+					
+					XmlNode nc = info.AddValue(nvw, "c");
+					info.AddAtt(nc, "alias", nx.Text);
+					info.AddAtt(nc, "name", c.Name);
+					if (nx.Checked)
+						info.AddAtt(nc, "id", true.ToString());
+				}
+			}
+			
+
+			this.input["xmlinfo"] = info.doc;
+		}
+		/// <summary>
+		/// Show unmmaped cols
+		/// </summary>
+		/// <param name="nd">Table node</param>
+		bool ShowUnmappedCols(TreeNode nd)
+		{
+			ITable table;
+			table = nd.Tag as ITable;
+			if (table == null || table is UTable) 
+				return false;
+			this.lblTable.Text = table.Name;
+			this.lstCols.ClearSelected();
+			if (nd.Name.StartsWith("#"))
+			{
+				pathTView.Text = "Is ForeignTable in ManyToMany relation!";
+				return true;
+			}
+			if (!nd.Checked)
+				return true;
+			ArrayList cols= new ArrayList();
+            TreeNode ut = null;
+            foreach(TreeNode nx in nd.Nodes)
+                if (nx.Tag is UTable) { ut = nx; break; }
+			foreach (IColumn c in table.Columns)
+			{
+				if (nd.Nodes.ContainsKey(c.Name) || c.IsInPrimaryKey) continue;
+                if (ut!=null && ut.Nodes.ContainsKey(c.Name)) continue;
+				cols.Add(c);
+			}
+			if (cols.Count < 1)
+				return true;
+			this.lblTable.Text = "Unmapped columns:";
+			this.lstCols.DataSource = cols;
+			this.lstCols.DisplayMember = "Name";
+			this.lstCols.Visible = this.lstCols.Enabled = true;
+			return true;
+		}
+		/// <summary>
+		/// Show info on right side (listbox and other), for the node.
+		/// </summary>
+		/// <param name="nd"></param>
+        private void UpdateInfoNode(TreeNode nd)
+        {
+            this.lblTable.Text = "<>";
+			this.lstCols.Enabled = this.lstFKTable.Enabled = this.lstFKcols.Enabled =
+			this.lstCols.Visible = this.lstFKTable.Visible = this.lstFKcols.Visible = false;
+			this.bMarkIdColTable.Enabled = false;
+
+			if (nd == null) return;
+
+            this.lblTable.Tag = nd.Tag;
+			//this.lblHelp.Text=String.Empty
+			if ( ShowUnmappedCols(nd))
+				return;
+			if (nd.Tag is UTable)
+			{
+				pathTView.Text = 
+                    String.Format( "{0} Type:{1}",
+                    (nd.Tag as UTable).Description, (nd.Tag as UTable).Name); ;
+				this.lblTable.Text = (nd.Tag as UTable).Owner.Name;
+				return;
+			}
+			ITable table;
+            IColumn col = nd.Tag as IColumn;
+            IForeignKey fk = nd.Tag as IForeignKey;
+			UserFk ufk = fk as UserFk;
+			
+			
+			table = nd.Tag as ITable;
+			if (table == null && nd.Parent == null) return;
+			if (table == null) table = nd.Parent.Tag as ITable;
+            if (nd.Parent.Tag is UTable) table = (nd.Parent.Tag as UTable).Owner;
+			if (table == null) return;
+			this.lblTable.Text = table.Name;
+			if (nd.Parent == null) return;
+
+			this.lstCols.Visible = true;
+			this.lstFKTable.DataSource = table.Database.Tables;
+            this.lstFKTable.DisplayMember = "Alias";
+            this.lstFKcols.DataSource = null;
+			this.lstCols.Tag = table;
+
+			ArrayList table_cols = new ArrayList();
+			foreach (IColumn c in table.Columns)
+				table_cols.Add(c);
+			this.lstCols.DataSource = table_cols;
+			this.lstCols.DisplayMember = "Alias";
+            this.lstCols.ClearSelected();
+
+			if (col != null)
+				pathTView.Text = String.Format("{6} ({5}) {0}{1}{2}{3}{4}{7}",
+					col.IsInForeignKey ? " IsFK" : String.Empty,
+					col.IsInPrimaryKey ? " IsInPK " : String.Empty,
+					col.IsAutoKey ? " AutoKey" : String.Empty,
+					col.IsNullable ? " Nullable" : String.Empty,
+					col.HasDefault ? " Default: " : String.Empty,
+					col.DataTypeName, col.Name, col.Default);
+
+            IColumns cols, colsfk;
+            ITable tablefk=null;
+            cols = colsfk = null;
+
+            if (fk != null || col != null)
+            {
+                this.bMarkIdColTable.Text = (nd.Checked || nd.Parent.Tag is UTable) ? "Un-mark &ID" : "Mark as &ID";
+                this.bMarkIdColTable.Enabled = false;
+                //foreach (TreeNode nx in nd.Parent.Nodes)
+                //    this.bMarkIdColTable.Enabled = this.bMarkIdColTable.Enabled || nx.Checked;
+            }
+
+            if (fk != null)
+            {
+				TRelation tr = new TRelation(table, fk);
+				string msg= String.Empty;
+				if (tr.IsManyToMany)
+				{
+					pathTView.Text = String.Empty;
+					msg = String.Format(" IsManyToMany ({0}->{1}->{2})",
+						tr.PrimaryTable.Alias,
+						tr.ForeignTable.Alias,
+						tr.CrossReferenceTable.Alias);
+				}
+				if (tr.IsManyToOne)
+					msg += " IsManyToOne";
+				if (tr.IsOneToOne)
+					msg += " IsOneToOne";
+				if (tr.IsZeroToMany)
+					msg += " IsZeroToMany";
+				if (tr.IsSelfReference)
+					msg += " IsSelfReference";
+
+				pathTView.Text += msg;
+
+				if (table.Name == fk.PrimaryTable.Name && 
+					!(tr.IsSelfReference && tr.IsManyToOne))
+                {
+                    tablefk = fk.ForeignTable;
+                    colsfk = fk.ForeignColumns;
+                    cols = fk.PrimaryColumns;
+                }
+                else
+                {
+                    this.bMarkIdColTable.Enabled = true;
+                    tablefk = fk.PrimaryTable;
+                    colsfk = fk.PrimaryColumns;
+                    cols = fk.ForeignColumns;
+                }
+                this.lstCols.SelectionMode = SelectionMode.MultiExtended;
+                foreach (IColumn c in cols)
+                    this.lstCols.SelectedIndex = this.lstCols.FindStringExact(c.Alias);
+            }
+            else if (col != null)
+            {
+                this.bMarkIdColTable.Enabled = !(nd.Checked ? false : (this.bMarkIdColTable.Enabled));
+                this.lstCols.SelectedIndex = this.lstCols.FindStringExact(col.Alias);
+                return;
+            }
+            else
+                return;
+
+
+			this.lstFKTable.Visible = this.lstFKcols.Visible = true;
+            
+            this.lstFKTable.SelectedIndex = this.lstFKTable.FindStringExact(tablefk.Alias);
+            this.lstFKcols.DataSource = tablefk.Columns;
+            this.lstFKcols.DisplayMember = "Alias";
+            this.lstFKcols.ClearSelected();
+            this.lstFKcols.SelectionMode = SelectionMode.MultiExtended;
+            foreach (IColumn c in colsfk)
+                this.lstFKcols.SelectedIndex = this.lstFKcols.FindStringExact(c.Alias);
+
+        }
+		private void treeVws_AfterSelect(object sender, TreeViewEventArgs e)
+		{
+			UpdateInfoView();
+		}
+
+		private void UpdateInfoView()
+		{
+			this.lblColumns.Visible = this.lstVwCols.Visible = this.lstVwCols.Enabled = false;
+			this.bMarkAsId.Enabled = false;
+			TreeNode nd = this.treeVws.SelectedNode;
+			if (nd == null || nd.Tag == null)
+				return;
+			if (nd.Tag is IColumn)
+			{
+				this.bMarkAsId.Enabled = true;
+				this.bMarkAsId.Text= nd.Checked? "Un-mark &ID":"Mark as &ID";
+			}
+			if (nd.Tag is IView)
+			{
+				IView vw = nd.Tag as IView;
+				this.lstVwCols.ClearSelected();
+				if (!nd.Checked)
+					return; //unmapped view
+				ArrayList cols = new ArrayList();
+				foreach (IColumn c in vw.Columns)
+				{
+					if (!nd.Nodes.ContainsKey(c.Name))
+						cols.Add(c);
+				}
+				if (cols.Count < 1)
+					return ;
+				this.lblColumns.Text = "Unmapped columns:";
+				this.lblColumns.Tag = nd;
+				this.lstVwCols.DataSource = cols;
+				this.lstVwCols.DisplayMember = "Name";
+				this.lblColumns.Visible = this.lstVwCols.Visible = this.lstVwCols.Enabled = true;
+
+			}
+
+		}
+
+		private void treeTa_AfterSelect(object sender, TreeViewEventArgs e)
+		{
+			if (treeTa.SelectedNode == null || treeTa.SelectedNode.Tag==null)
+				return;
+			this.bSaveFK.Enabled = false;
+			pathTView.Text = treeTa.SelectedNode.FullPath;
+			if ((treeTa.SelectedNode.Tag as ITable) != null)
+			{
+				pathTView.Text += " (TABLE)";
+			}
+			UpdateInfoNode(treeTa.SelectedNode);
+		
+		}
+
+        private void lstFKTable_SelectionChangeCommitted(object sender, EventArgs e)
+        {
+            FillList(lstFKcols, this.lstFKTable.SelectedValue as ITable);
+        }
+
+		void unmapTable(TreeNode nd)
+		{
+			nd.ForeColor = Color.Gray;
+			nd.Nodes.Clear();
+			nd.Checked = false;
+		}
+        private void bUnmap_Click(object sender, EventArgs e)
+        {
+			TreeNode nd = treeTa.SelectedNode;
+			if (nd == null || (nd.Tag is UTable))
+				return;
+			this._ismodified = true;
+            if ((nd.Tag as ITable) != null)
+            {
+				unmapTable(nd);
+				UpdateInfoNode(nd);
+				this.lblHelp.Text = "Unmapped TABLE: " + (nd.Tag as ITable).Name;
+                return;
+            }
+            if (nd.Tag is IColumn)
+			{
+                IColumn col = nd.Tag as IColumn;
+                if (col.IsNullable || col.HasDefault)
+				{
+					nd.Remove();
+					this.lblHelp.Text = "Unmap column: "+col.Name;
+				}
+				else
+					MessageBox.Show("Can't Remove!\nProperty isn't nullable or don't have default value!.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				return;			
+
+			}
+			IForeignKey fk = nd.Tag as IForeignKey;
+			if (fk != null)
+			{
+				ITable table = ((nd.Parent.Tag is UTable)?nd.Parent.Parent.Tag:nd.Parent.Tag) as ITable;
+
+				TRelation tr = new TRelation(table, fk);
+				if (!(nd.Parent.Tag is UTable) && !tr.IsSelfReference && !tr.IsManyToOne)
+				{
+					nd.Remove();
+				}
+                else if (fk.ForeignTable.Name != table.Name)
+                {
+					nd.Remove();
+                }
+                else
+				{
+                    int n = nd.Index;
+                    TreeNode np= nd.Parent;
+                    nd.Remove();
+                    string cols = "Unmap "+nd.Text+" -> ";
+                    foreach (IColumn c in fk.ForeignColumns)
+                    {
+                        nd=NodeProperty(table.Columns[c.Name]);
+                        cols = cols + " " + nd.Text;
+                        np.Nodes.Insert(n, nd);
+                        n++;
+                    }
+                    treeTa.SelectedNode = nd;
+					UpdateInfoNode(nd);
+                    this.lblHelp.Text = cols;
+					return;
+				}
+				
+                this.lblHelp.Text = "Remove property. Unmap foreign key: " + fk.Alias;
+			}
+            
+        }
+
+        private void bRemap_Click(object sender, EventArgs e)
+        {
+            TreeNode nd=treeTa.SelectedNode;
+            IColumn col;
+			if ((col = nd.Tag as IColumn) != null)
+			{
+				if (!col.IsInForeignKey)
+				{
+					this.lblHelp.Text = String.Format("WARN: '{0}' is not in ForeignKey " , col.Alias);
+					return;
+				}
+				this._ismodified = true;
+				foreach (IForeignKey fk in col.ForeignKeys)
+				{
+                    if (fk.ForeignTable.Name != col.Table.Name)
+                        continue;
+                    foreach (IColumn cc in fk.ForeignColumns)
+                    {
+                        if (cc.Name == col.Name)
+                        {
+                            NodeFK(nd, fk);// fk.PrimaryTable.Alias;
+                            UpdateInfoNode(nd);
+                            this.lblHelp.Text = String.Format("Map ForeignKey: {0}", fk.Alias);
+                            if (fk.ForeignColumns.Count > 1 )
+                                foreach (IColumn c in fk.ForeignColumns)
+                                {
+                                    foreach (TreeNode ny in nd.Parent.Nodes)
+                                    {
+                                        if (ny.Name == c.Name && ny.Tag is IColumn)
+                                        {
+                                            ny.Remove();
+                                            break;
+                                        }
+                                    }
+                                }
+                            return;
+                        }
+                    }
+				}
+				return;
+			}
+			ITable t;
+			if ((t = (nd.Tag as ITable)) == null)
+				return;
+			else if (!nd.Checked)
+			{
+				if (nd.Name.StartsWith("#"))
+				{
+					if (MessageBox.Show("Table is foreign in many2many relation!, Continue?",
+						"Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+						return;
+				}
+				nd.ForeColor = Color.Black;
+				nd.Checked = true;
+				MapTableFromDb(t, null);
+				UpdateInfoNode(nd);
+				this._ismodified = true;
+				this.lblHelp.Text = String.Format("Map table '{0}' as '{1}' (and all columns) " , t.Name,t.Alias );
+				return;
+			}
+			if (!this.lstCols.Enabled || this.lstFKcols.Enabled)
+				return;
+			
+			col = this.lstCols.SelectedValue as IColumn;
+            if (col == null) 
+				return;
+            
+			if (nd.Nodes.ContainsKey(col.Name))
+			{
+				MessageBox.Show(col.Alias + " :Already exist!", "Error",MessageBoxButtons.OK, MessageBoxIcon.Error);
+				return;
+			}
+			this._ismodified = true;
+			TreeNode nx = NodeProperty(col);
+			nd.Nodes.Insert( Info.IndexOfCol(col), nx);
+			//nd.Nodes.Add(nx);
+			UpdateInfoNode(nd);
+			this.treeTa.SelectedNode = nd;
+			this.lblHelp.Text = String.Format("Map property: '{0}' as '{1}' ", col.Name, col.Alias);
+			return;
+
+        }
+
+
+        private bool FillList(ListBox lst, TreeNode nd)
+        {
+			while (nd != null && !(nd.Tag is ITable))
+				nd = nd.Parent;
+            if (nd == null)
+                return false;
+            return FillList( lst,nd.Tag as ITable);
+        }
+        private bool FillList(ListBox lst, ITable t)
+        {
+            ArrayList cols = new ArrayList();
+            foreach (IColumn c in t.Columns)
+            {
+                cols.Add(c.Name);
+            }
+            if (cols.Count < 1)
+                return false;
+            lst.ClearSelected();
+            lst.SelectionMode = SelectionMode.One;
+            lst.DataSource = cols;
+            lst.DisplayMember = String.Empty;
+            lst.Visible = lst.Enabled = true;
+            return true;
+        }
+
+		private void bNewZ2M_Click(object sender, EventArgs e)
+		{ //zero to many
+			NewUserRelation(true);
+		}
+
+        private void bFkNewForeign_Click(object sender, EventArgs e)
+		{//ManyToOne
+			NewUserRelation(false);
+		}
+        private void NewUserRelation(bool z2m)
+		{
+			
+            this.bSaveFK.Enabled = false;
+            TreeNode nd = this.treeTa.SelectedNode;
+            if (nd == null)return;
+            bool ok = false;
+            String message = "<>";
+            if (!z2m)
+            {
+				if (!(nd.Tag is IColumn))
+				{
+					MessageBox.Show("Select a column!", "Error");
+					return;
+				}
+                message = "Define a new ManyToOne relation!";
+                ok = FillList(this.lstCols, nd);
+                if (ok)
+                {
+                    this.lstCols.SelectedItem = nd.Name;
+                    this.lstCols.Enabled = false;
+                    this.lblTable.Tag = (nd.Tag as IColumn).Table;
+                }
+            }
+            else
+            {
+                message = "Define a new ZeroToMany relation!";
+                ok = FillList(this.lstCols, nd);
+                if(ok)
+                    this.lblTable.Tag = nd.Tag;
+            }
+            if (!ok)
+                return;
+            this.lblHelp.Text = message;
+            this.bSaveFK.Enabled = true;
+            this.lstFKTable.DataSource = this.database.Tables;
+            this.lstFKTable.DisplayMember = "Alias";
+            this.lstFKTable.SelectedItem = this.database.Tables[0];
+            this.lstFKTable.Visible = this.lstFKTable.Enabled = true;
+            lstFKTable_SelectionChangeCommitted(null, null);            
+		}
+
+        private void treeTa_AfterLabelEdit(object sender, NodeLabelEditEventArgs e)
+        {
+			this._ismodified = true;
+            e.CancelEdit = true;
+            if (e.Label == null)
+                return;
+            else if (e.Label.Length < 1 || !CheckName(e.Node, Info.ToPropertyName(e.Label)))
+            {
+                MessageBox.Show("Invalid Name", "Node Label Edit");
+                e.Node.BeginEdit();
+            }
+            else
+            {
+                e.Node.Text = Info.ToPropertyName(e.Label);
+                if (e.Node.Tag is IColumn)
+                    (e.Node.Tag as IColumn).Alias = e.Node.Text;
+                else if (e.Node.Tag is ITable)
+                    (e.Node.Tag as ITable).Alias = e.Node.Text;
+                else if (e.Node.Tag is UTable )
+                    (e.Node.Tag as UTable).Alias = e.Node.Text;
+                else if (e.Node.Tag is IForeignKey)
+                    (e.Node.Tag as IForeignKey).Alias = e.Node.Text;
+            }
+        }
+
+
+
+		private void bSaveFK_Click(object sender, EventArgs e)
+		{
+            this.bSaveFK.Enabled = false;
+            if (!this.lstCols.Visible || !this.lstFKcols.Visible || this.treeTa.SelectedNode == null ||
+                this.treeTa.SelectedNode.Tag == null 
+                )
+                return;
+            if (this.lstCols.SelectedItems.Count != 1 ||
+                this.lstFKcols.SelectedItems.Count != 1)
+            {
+                MessageBox.Show("Select ONE column for each table!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+			this._ismodified = true;
+            IColumn col = this.treeTa.SelectedNode.Tag as IColumn;
+            UTable ucol = this.treeTa.SelectedNode.Tag as UTable;
+            ITable ptable = this.lblTable.Tag as ITable;
+            ITable ftable = this.lstFKTable.SelectedValue as ITable;
+            if (ftable==null || ptable == null && col == null && ucol == null)
+                return;
+            IColumns pcols = new UserCols();
+            IColumns fcols = new UserCols();
+            TreeNode nInsert = null;
+			if (ptable.Columns[this.lstCols.SelectedItem as string].DataType !=
+				ftable.Columns[this.lstFKcols.SelectedItem as string].DataType)
+			{
+				MessageBox.Show("Different data type!!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				this.bSaveFK.Enabled = true;
+				return;
+			}
+            pcols.Add( ptable.Columns[this.lstCols.SelectedItem as string]);
+            fcols.Add( ftable.Columns[this.lstFKcols.SelectedItem as string]);
+            if(col!= null)
+                nInsert= this.treeTa.SelectedNode;
+            //string alias = Info.CheckName(ptable.Columns,ftable.Alias);
+            UserFk ufk = new UserFk(ftable.Alias, ptable, pcols, ftable, fcols, this.lstCols.Enabled);
+
+            if (this.lstCols.Enabled)
+                nInsert = NodeFKNew(this.treeTa.Nodes[this.treeTa.Nodes.IndexOfKey(ptable.Name)], ufk);
+            else
+                NodeFK(nInsert, ufk);
+            while (!CheckName(nInsert, ufk.Alias))
+                ufk.Alias = ufk.Alias + "X";
+            nInsert.Text = ufk.Alias;
+            this.treeTa.SelectedNode = nInsert;
+            UpdateInfoNode(nInsert);
+			this.lblHelp.Text = " New Relation SAVED!";
+
+		}
+
+        bool CheckName(TreeNode nd, string n)
+        {
+            bool ok = true;
+            if (nd.Parent != null && nd.Parent.Text == n)
+                ok = false;
+
+            if (nd.Parent == null)
+            foreach (TreeNode nx in nd.TreeView.Nodes)
+            {
+                if (nd != nx && nx.Text == n)
+                    ok = false;
+            }
+            foreach (TreeNode nx in nd.Nodes)
+            {
+                if (nx.Text == n)
+                    ok = false;
+            }
+            return ok;
+        }
+
+		private void bUnmapVw_Click(object sender, EventArgs e)
+		{
+			if (this.treeVws.SelectedNode == null )
+				return;
+			this._ismodified = true;
+			if ((this.treeVws.SelectedNode.Tag as IView) != null)
+			{
+				this.treeVws.SelectedNode.ForeColor = Color.Gray;
+				this.treeVws.SelectedNode.Checked = false;
+				this.treeVws.SelectedNode.Nodes.Clear();
+				return;
+			}
+			//is IColumn:
+			this.treeVws.SelectedNode.Remove();
+			if (this.treeVws.SelectedNode.Parent.Nodes.Count < 1)
+			{
+				this.treeVws.SelectedNode.Parent.Checked = false;
+				this.treeVws.SelectedNode.Parent.ForeColor = Color.Gray;
+			}
+
+		}
+
+		private void bMapVw_Click(object sender, EventArgs e)
+		{
+			if (this.lstVwCols.Enabled)
+			{//map a column
+
+				TreeNode nd = this.lblColumns.Tag as TreeNode;
+				nd.Nodes.Add(NodeProperty(this.lstVwCols.SelectedValue as IColumn));
+				UpdateInfoView();
+				return;
+			}
+			if (this.treeVws.SelectedNode == null || (this.treeVws.SelectedNode.Tag as IView ) == null)
+				return;
+			MapViewFromDb(this.treeVws.SelectedNode, null, null);
+		}
+
+		private void bUnmapAllVw_Click(object sender, EventArgs e)
+		{
+			foreach (TreeNode nd in this.treeVws.Nodes)
+			{
+			nd.ForeColor = Color.Gray;
+			nd.Nodes.Clear();
+			nd.Checked = false;
+			}
+			this._ismodified = true;
+		}
+
+		private void bMapAllVw_Click(object sender, EventArgs e)
+		{
+			foreach (TreeNode nd in this.treeVws.Nodes)
+			{
+				if(!nd.Checked)
+					MapViewFromDb(nd, null, null);
+			}
+		}
+
+		private void bRemapAll_Click(object sender, EventArgs e)
+		{
+			if (MessageBox.Show("Remap all? (lost user relations)", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+			{
+				XmlNode nts = info.doc.DocumentElement.SelectSingleNode(
+					String.Format("database[@db='{0}' and @driver='{1}']", database.Name, 
+						database.Root.DriverString));
+				if (nts != null)
+					nts.ParentNode.RemoveChild(nts);
+				foreach (ITable t in database.Tables)
+				{
+					t.Alias = t.Name;
+					foreach (IColumn c in t.Columns)
+						c.Alias = c.Name;
+				}
+				foreach (IView t in database.Views)
+				{
+					t.Alias = t.Name;
+					foreach (IColumn c in t.Columns)
+						c.Alias = c.Name;
+				}
+                this.lblHelp.Text = "Remap all!";
+				this._ismodified = true;
+				UpdateAll(this.database);
+			}
+		}
+
+		private void bMarkAsId_Click(object sender, EventArgs e)
+		{
+			TreeNode nd=this.treeVws.SelectedNode;
+			if (!(nd.Tag is IColumn))
+				return;
+
+			this._ismodified = true;
+			if (nd.Checked)
+			{
+				NodeProperty(nd, nd.Tag as IColumn);
+			}
+			else
+			{
+				MarkAsId( nd);
+			}
+			UpdateInfoView();
+		}
+
+		private void MarkAsId(TreeNode nd)
+		{
+			nd.ToolTipText = "Id";
+			nd.Checked = true;
+            nd.NodeFont = new Font(this.treeTa.Font, FontStyle.Bold);
+			nd.ForeColor = Color.Green;
+		}
+        bool Nodeconfigure(TreeNode nd)
+        {
+            if (nd.Tag is IForeignKey)
+            {
+                NodeFK(nd, nd.Tag as IForeignKey);
+            }
+            else if (nd.Tag is IColumn)
+            {
+                NodeProperty(nd, nd.Tag as IColumn);
+            }
+            else
+                return false;
+            return true;
+        }
+        void SortProperties(ITable table, TreeNode np)
+        {
+            int ix = -1;
+            foreach (IColumn c in table.Columns)
+            {
+                ix++;
+                TreeNode nd=null;
+                foreach (TreeNode nx in np.Nodes)
+                {
+                    if (nx.Name == c.Name && nx.Tag is IColumn)
+                    {
+                        nd = nx;
+                        break;
+                    }
+                }
+                if (nd == null)
+                    continue;
+                nd.Remove();
+                np.Nodes.Insert(ix, nd);
+            }
+        }
+		private void bMarkIdColTable_Click(object sender, EventArgs e)
+		{
+			TreeNode nd = this.treeTa.SelectedNode;
+			if (nd == null)
+				return;
+            bool mark = !nd.Checked;
+            if (!Nodeconfigure(nd))
+                return;
+            if (nd.Parent.Tag is UTable)
+            {//remove from composite-id :
+                TreeNode np= nd.Parent;
+                TreeNode npp = nd.Parent.Parent;
+                nd.Remove();
+                np.Parent.Nodes.Add(nd);
+                if (np.Nodes.Count ==1)
+                {//remove composite id, it's not necessary:
+                    nd = np.Nodes[0];
+                    nd.Remove();
+                    np.Parent.Nodes.Add(nd);
+                    np.Remove();
+                    MarkAsId(nd);
+                    this.lblHelp.Text = "Remove composite-id!";
+                }
+                SortProperties(npp.Tag as ITable, npp);
+                return;
+            }
+            if (mark)
+            {
+                TreeNode npk = null;
+                bool hasid = false;
+                foreach (TreeNode nx in nd.Parent.Nodes)
+                {
+                    hasid = hasid || nx.Checked;
+                    if(nx.Tag is UTable) npk= nx;
+                }
+                if (hasid)
+                {
+                    if (npk==null && MessageBox.Show("Build a composite-id??", "Confirmation", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+                    {
+                        return;
+                    }
+                    MarkAsId(nd);
+
+                    UTable ut ;
+                    if (npk != null)
+                        ut = npk.Tag as UTable;
+                    else
+                    {
+                        ut = new UTable(nd.Parent.Tag as ITable,false);
+                        npk = nd.Parent.Nodes.Insert(0, ut.Alias);
+                        this.lblHelp.Text = "Add composite-id!";
+                        npk.Tag = ut;
+                    }
+                    int n;
+                    do
+                    {
+                        n = npk.Parent.Nodes.Count;
+                        foreach (TreeNode nx in npk.Parent.Nodes)
+                        {
+                            if (nx.Checked && nx != npk)
+                            {
+                                Nodeconfigure(nx);
+                                nx.Remove();
+                                npk.Nodes.Add(nx);
+                                break;
+                            }
+                        }
+                    } while (n != npk.Parent.Nodes.Count);
+
+                    SortProperties(npk.Parent.Tag as ITable, npk);
+                    this.treeTa.SelectedNode = npk;
+                    MarkAsId(npk);
+                    UpdateInfoNode(npk);
+                    return;
+                    
+                }
+                MarkAsId(nd);
+            }
+			UpdateInfoNode(nd);
+		}
+
+//        private void link2Web_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+//        {
+//            System.Diagnostics.Process.Start(e.Link.LinkData as string);
+//
+//        }
+
+		private void treeVws_AfterLabelEdit(object sender, NodeLabelEditEventArgs e)
+		{
+			this._ismodified = true;
+			e.CancelEdit = true;
+			if (e.Label == null)
+				return;
+			else if (e.Label.Length < 1 || !CheckName(e.Node, Info.ToPropertyName(e.Label)))
+			{
+				MessageBox.Show("Invalid Name", "Node Label Edit");
+				e.Node.BeginEdit();
+			}
+			else
+			{
+				e.Node.Text = Info.ToPropertyName(e.Label);
+				if (e.Node.Tag is IColumn)
+					(e.Node.Tag as IColumn).Alias = e.Node.Text;
+				else if (e.Node.Tag is IView)
+					(e.Node.Tag as IView).Alias = e.Node.Text;
+			}
+
+		}
+
+
+	}
+
+
+	partial class l99_form
+	{
+        /// <summary>
+        /// Required designer variable.
+        /// </summary>
+        private System.ComponentModel.IContainer components = null;
+
+        /// <summary>
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        #region Windows Form Designer generated code
+
+        /// <summary>
+        /// Required method for Designer support - do not modify
+        /// the contents of this method with the code editor.
+        /// </summary>
+        private void InitializeComponent()
+        {
+            this.components = new System.ComponentModel.Container();
+            this.tabs = new System.Windows.Forms.TabControl();
+            this.tabRel = new System.Windows.Forms.TabPage();
+            this.bNewZ2M = new System.Windows.Forms.Button();
+            this.bMarkIdColTable = new System.Windows.Forms.Button();
+            this.bRemapAll = new System.Windows.Forms.Button();
+            this.bFkNewForeign = new System.Windows.Forms.Button();
+            this.bRemap = new System.Windows.Forms.Button();
+            this.bUnmap = new System.Windows.Forms.Button();
+            this.label3 = new System.Windows.Forms.Label();
+            this.label10 = new System.Windows.Forms.Label();
+            this.bSaveFK = new System.Windows.Forms.Button();
+            this.lstFKcols = new System.Windows.Forms.ListBox();
+            this.lstFKTable = new System.Windows.Forms.ComboBox();
+            this.lstCols = new System.Windows.Forms.ListBox();
+            this.lblTable = new System.Windows.Forms.Label();
+            this.pathTView = new System.Windows.Forms.Label();
+            this.treeTa = new System.Windows.Forms.TreeView();
+            this.tabViews = new System.Windows.Forms.TabPage();
+            this.bMarkAsId = new System.Windows.Forms.Button();
+            this.bMapAllVw = new System.Windows.Forms.Button();
+            this.bUnmapAllVw = new System.Windows.Forms.Button();
+            this.bMapVw = new System.Windows.Forms.Button();
+            this.bUnmapVw = new System.Windows.Forms.Button();
+            this.treeVws = new System.Windows.Forms.TreeView();
+            this.lblColumns = new System.Windows.Forms.Label();
+            this.lstVwCols = new System.Windows.Forms.ListBox();
+            this.tabSetting = new System.Windows.Forms.TabPage();
+            this.chkGenerateProjectFile = new System.Windows.Forms.CheckBox();
+            this.dlIDEVersion = new System.Windows.Forms.ComboBox();
+            this.lblDBPrefix = new System.Windows.Forms.Label();
+            this.iDBPrefix = new System.Windows.Forms.TextBox();
+            this.Dir = new System.Windows.Forms.Button();
+            this.label9 = new System.Windows.Forms.Label();
+            this.label8 = new System.Windows.Forms.Label();
+            this.lblIDEVersion = new System.Windows.Forms.Label();
+            this.label7 = new System.Windows.Forms.Label();
+            this.label6 = new System.Windows.Forms.Label();
+            this.iOutputPath = new System.Windows.Forms.TextBox();
+            this.iInherit = new System.Windows.Forms.TextBox();
+            this.iPrefix = new System.Windows.Forms.TextBox();
+            this.iNamespace = new System.Windows.Forms.TextBox();
+            this.iAssembly = new System.Windows.Forms.TextBox();
+            this.label5 = new System.Windows.Forms.Label();
+            this.chkOptions = new System.Windows.Forms.CheckedListBox();
+            this.lblHelp = new System.Windows.Forms.Label();
+            this.iDatabase = new System.Windows.Forms.ComboBox();
+            this.Cancel = new System.Windows.Forms.Button();
+            this.OK = new System.Windows.Forms.Button();
+            this.label1 = new System.Windows.Forms.Label();
+            this.pathFinder = new System.Windows.Forms.FolderBrowserDialog();
+            this.bSave = new System.Windows.Forms.Button();
+            this.toolTip = new System.Windows.Forms.ToolTip(this.components);
+            this.lblTimestamp = new System.Windows.Forms.Label();
+			this.lblCreatedDateField = new System.Windows.Forms.Label();
+            this.iTimestamp = new System.Windows.Forms.TextBox();
+			this.iCreatedDateField = new System.Windows.Forms.TextBox();
+            this.tabs.SuspendLayout();
+            this.tabRel.SuspendLayout();
+            this.tabViews.SuspendLayout();
+            this.tabSetting.SuspendLayout();
+            this.SuspendLayout();
+            // 
+            // tabs
+            // 
+            this.tabs.Controls.Add(this.tabRel);
+            this.tabs.Controls.Add(this.tabViews);
+            this.tabs.Controls.Add(this.tabSetting);
+            this.tabs.Location = new System.Drawing.Point(2, 34);
+            this.tabs.Name = "tabs";
+            this.tabs.SelectedIndex = 0;
+            this.tabs.Size = new System.Drawing.Size(620, 378);
+            this.tabs.TabIndex = 0;
+            // 
+            // tabRel
+            // 
+            this.tabRel.Controls.Add(this.bNewZ2M);
+            this.tabRel.Controls.Add(this.bMarkIdColTable);
+            this.tabRel.Controls.Add(this.bRemapAll);
+            this.tabRel.Controls.Add(this.bFkNewForeign);
+            this.tabRel.Controls.Add(this.bRemap);
+            this.tabRel.Controls.Add(this.bUnmap);
+            this.tabRel.Controls.Add(this.label3);
+            this.tabRel.Controls.Add(this.label10);
+            this.tabRel.Controls.Add(this.bSaveFK);
+            this.tabRel.Controls.Add(this.lstFKcols);
+            this.tabRel.Controls.Add(this.lstFKTable);
+            this.tabRel.Controls.Add(this.lstCols);
+            this.tabRel.Controls.Add(this.lblTable);
+            this.tabRel.Controls.Add(this.pathTView);
+            this.tabRel.Controls.Add(this.treeTa);
+            this.tabRel.Location = new System.Drawing.Point(4, 22);
+            this.tabRel.Name = "tabRel";
+            this.tabRel.Padding = new System.Windows.Forms.Padding(3);
+            this.tabRel.Size = new System.Drawing.Size(612, 352);
+            this.tabRel.TabIndex = 2;
+            this.tabRel.Text = "Tables";
+            this.tabRel.UseVisualStyleBackColor = true;
+            // 
+            // bNewZ2M
+            // 
+            this.bNewZ2M.Location = new System.Drawing.Point(521, 138);
+            this.bNewZ2M.Name = "bNewZ2M";
+            this.bNewZ2M.Size = new System.Drawing.Size(85, 23);
+            this.bNewZ2M.TabIndex = 17;
+            this.bNewZ2M.Text = "+ &zero to many";
+            this.bNewZ2M.UseVisualStyleBackColor = true;
+            this.bNewZ2M.Click += new System.EventHandler(this.bNewZ2M_Click);
+            // 
+            // bMarkIdColTable
+            // 
+            this.bMarkIdColTable.Location = new System.Drawing.Point(521, 66);
+            this.bMarkIdColTable.Name = "bMarkIdColTable";
+            this.bMarkIdColTable.Size = new System.Drawing.Size(85, 23);
+            this.bMarkIdColTable.TabIndex = 16;
+            this.bMarkIdColTable.Text = "Mark as &ID";
+            this.bMarkIdColTable.UseVisualStyleBackColor = true;
+            this.bMarkIdColTable.Click += new System.EventHandler(this.bMarkIdColTable_Click);
+            // 
+            // bRemapAll
+            // 
+            this.bRemapAll.Location = new System.Drawing.Point(521, 309);
+            this.bRemapAll.Name = "bRemapAll";
+            this.bRemapAll.Size = new System.Drawing.Size(85, 23);
+            this.bRemapAll.TabIndex = 15;
+            this.bRemapAll.Text = "&Remap All";
+            this.bRemapAll.UseVisualStyleBackColor = true;
+            this.bRemapAll.Click += new System.EventHandler(this.bRemapAll_Click);
+            // 
+            // bFkNewForeign
+            // 
+            this.bFkNewForeign.Location = new System.Drawing.Point(521, 111);
+            this.bFkNewForeign.Name = "bFkNewForeign";
+            this.bFkNewForeign.Size = new System.Drawing.Size(85, 23);
+            this.bFkNewForeign.TabIndex = 13;
+            this.bFkNewForeign.Text = "+  many &to one";
+            this.bFkNewForeign.UseVisualStyleBackColor = true;
+            this.bFkNewForeign.Click += new System.EventHandler(this.bFkNewForeign_Click);
+            // 
+            // bRemap
+            // 
+            this.bRemap.Location = new System.Drawing.Point(521, 37);
+            this.bRemap.Name = "bRemap";
+            this.bRemap.Size = new System.Drawing.Size(85, 23);
+            this.bRemap.TabIndex = 6;
+            this.bRemap.Text = "&Map";
+            this.bRemap.UseVisualStyleBackColor = true;
+            this.bRemap.Click += new System.EventHandler(this.bRemap_Click);
+            // 
+            // bUnmap
+            // 
+            this.bUnmap.Location = new System.Drawing.Point(521, 8);
+            this.bUnmap.Name = "bUnmap";
+            this.bUnmap.Size = new System.Drawing.Size(85, 23);
+            this.bUnmap.TabIndex = 5;
+            this.bUnmap.Text = "&UnMap";
+            this.bUnmap.UseVisualStyleBackColor = true;
+            this.bUnmap.Click += new System.EventHandler(this.bUnmap_Click);
+            // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(521, 94);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(64, 13);
+            this.label3.TabIndex = 12;
+            this.label3.Text = "User define:";
+            // 
+            // label10
+            // 
+            this.label10.AutoSize = true;
+            this.label10.Location = new System.Drawing.Point(300, 7);
+            this.label10.Name = "label10";
+            this.label10.Size = new System.Drawing.Size(37, 13);
+            this.label10.TabIndex = 11;
+            this.label10.Text = "Table:";
+            // 
+            // bSaveFK
+            // 
+            this.bSaveFK.Enabled = false;
+            this.bSaveFK.Location = new System.Drawing.Point(521, 165);
+            this.bSaveFK.Name = "bSaveFK";
+            this.bSaveFK.Size = new System.Drawing.Size(85, 23);
+            this.bSaveFK.TabIndex = 8;
+            this.bSaveFK.Text = "&Apply";
+            this.bSaveFK.UseVisualStyleBackColor = true;
+            this.bSaveFK.Click += new System.EventHandler(this.bSaveFK_Click);
+            // 
+            // lstFKcols
+            // 
+            this.lstFKcols.FormattingEnabled = true;
+            this.lstFKcols.Location = new System.Drawing.Point(299, 198);
+            this.lstFKcols.Name = "lstFKcols";
+            this.lstFKcols.Size = new System.Drawing.Size(206, 134);
+            this.lstFKcols.TabIndex = 4;
+            // 
+            // lstFKTable
+            // 
+            this.lstFKTable.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.lstFKTable.FormattingEnabled = true;
+            this.lstFKTable.Location = new System.Drawing.Point(299, 168);
+            this.lstFKTable.Name = "lstFKTable";
+            this.lstFKTable.Size = new System.Drawing.Size(206, 21);
+            this.lstFKTable.TabIndex = 3;
+            this.lstFKTable.SelectionChangeCommitted += new System.EventHandler(this.lstFKTable_SelectionChangeCommitted);
+            // 
+            // lstCols
+            // 
+            this.lstCols.FormattingEnabled = true;
+            this.lstCols.Location = new System.Drawing.Point(299, 28);
+            this.lstCols.Name = "lstCols";
+            this.lstCols.Size = new System.Drawing.Size(206, 134);
+            this.lstCols.TabIndex = 2;
+            // 
+            // lblTable
+            // 
+            this.lblTable.AutoSize = true;
+            this.lblTable.Location = new System.Drawing.Point(340, 8);
+            this.lblTable.Name = "lblTable";
+            this.lblTable.Size = new System.Drawing.Size(35, 13);
+            this.lblTable.TabIndex = 2;
+            this.lblTable.Text = "label3";
+            // 
+            // pathTView
+            // 
+            this.pathTView.AutoSize = true;
+            this.pathTView.Font = new System.Drawing.Font("Verdana", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.pathTView.Location = new System.Drawing.Point(3, 335);
+            this.pathTView.Name = "pathTView";
+            this.pathTView.Size = new System.Drawing.Size(91, 13);
+            this.pathTView.TabIndex = 1;
+            this.pathTView.Text = "<node\'s path>";
+            // 
+            // treeTa
+            // 
+            this.treeTa.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.treeTa.HideSelection = false;
+            this.treeTa.LabelEdit = true;
+            this.treeTa.Location = new System.Drawing.Point(0, 2);
+            this.treeTa.Name = "treeTa";
+            this.treeTa.ShowNodeToolTips = true;
+            this.treeTa.Size = new System.Drawing.Size(293, 330);
+            this.treeTa.TabIndex = 0;
+            this.treeTa.AfterLabelEdit += new System.Windows.Forms.NodeLabelEditEventHandler(this.treeTa_AfterLabelEdit);
+            this.treeTa.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.treeTa_AfterSelect);
+            // 
+            // tabViews
+            // 
+            this.tabViews.Controls.Add(this.bMarkAsId);
+            this.tabViews.Controls.Add(this.bMapAllVw);
+            this.tabViews.Controls.Add(this.bUnmapAllVw);
+            this.tabViews.Controls.Add(this.bMapVw);
+            this.tabViews.Controls.Add(this.bUnmapVw);
+            this.tabViews.Controls.Add(this.treeVws);
+            this.tabViews.Controls.Add(this.lblColumns);
+            this.tabViews.Controls.Add(this.lstVwCols);
+            this.tabViews.Location = new System.Drawing.Point(4, 22);
+            this.tabViews.Name = "tabViews";
+            this.tabViews.Padding = new System.Windows.Forms.Padding(3);
+            this.tabViews.Size = new System.Drawing.Size(612, 352);
+            this.tabViews.TabIndex = 0;
+            this.tabViews.Text = "Views";
+            this.tabViews.UseVisualStyleBackColor = true;
+            // 
+            // bMarkAsId
+            // 
+            this.bMarkAsId.Location = new System.Drawing.Point(531, 63);
+            this.bMarkAsId.Name = "bMarkAsId";
+            this.bMarkAsId.Size = new System.Drawing.Size(75, 21);
+            this.bMarkAsId.TabIndex = 16;
+            this.bMarkAsId.Text = "Mark as ID";
+            this.bMarkAsId.UseVisualStyleBackColor = true;
+            this.bMarkAsId.Click += new System.EventHandler(this.bMarkAsId_Click);
+            // 
+            // bMapAllVw
+            // 
+            this.bMapAllVw.Location = new System.Drawing.Point(531, 320);
+            this.bMapAllVw.Name = "bMapAllVw";
+            this.bMapAllVw.Size = new System.Drawing.Size(75, 21);
+            this.bMapAllVw.TabIndex = 15;
+            this.bMapAllVw.Text = "Map All";
+            this.bMapAllVw.UseVisualStyleBackColor = true;
+            this.bMapAllVw.Click += new System.EventHandler(this.bMapAllVw_Click);
+            // 
+            // bUnmapAllVw
+            // 
+            this.bUnmapAllVw.Location = new System.Drawing.Point(531, 291);
+            this.bUnmapAllVw.Name = "bUnmapAllVw";
+            this.bUnmapAllVw.Size = new System.Drawing.Size(75, 21);
+            this.bUnmapAllVw.TabIndex = 14;
+            this.bUnmapAllVw.Text = "UnMap All";
+            this.bUnmapAllVw.UseVisualStyleBackColor = true;
+            this.bUnmapAllVw.Click += new System.EventHandler(this.bUnmapAllVw_Click);
+            // 
+            // bMapVw
+            // 
+            this.bMapVw.Location = new System.Drawing.Point(531, 34);
+            this.bMapVw.Name = "bMapVw";
+            this.bMapVw.Size = new System.Drawing.Size(75, 21);
+            this.bMapVw.TabIndex = 10;
+            this.bMapVw.Text = "&Map";
+            this.bMapVw.UseVisualStyleBackColor = true;
+            this.bMapVw.Click += new System.EventHandler(this.bMapVw_Click);
+            // 
+            // bUnmapVw
+            // 
+            this.bUnmapVw.Location = new System.Drawing.Point(531, 5);
+            this.bUnmapVw.Name = "bUnmapVw";
+            this.bUnmapVw.Size = new System.Drawing.Size(75, 21);
+            this.bUnmapVw.TabIndex = 9;
+            this.bUnmapVw.Text = "&UnMap";
+            this.bUnmapVw.UseVisualStyleBackColor = true;
+            this.bUnmapVw.Click += new System.EventHandler(this.bUnmapVw_Click);
+            // 
+            // treeVws
+            // 
+            this.treeVws.HideSelection = false;
+            this.treeVws.LabelEdit = true;
+            this.treeVws.Location = new System.Drawing.Point(12, 6);
+            this.treeVws.Name = "treeVws";
+            this.treeVws.ShowNodeToolTips = true;
+            this.treeVws.Size = new System.Drawing.Size(222, 338);
+            this.treeVws.TabIndex = 6;
+            this.treeVws.AfterLabelEdit += new System.Windows.Forms.NodeLabelEditEventHandler(this.treeVws_AfterLabelEdit);
+            this.treeVws.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.treeVws_AfterSelect);
+            // 
+            // lblColumns
+            // 
+            this.lblColumns.AutoSize = true;
+            this.lblColumns.Location = new System.Drawing.Point(245, 34);
+            this.lblColumns.Name = "lblColumns";
+            this.lblColumns.Size = new System.Drawing.Size(50, 13);
+            this.lblColumns.TabIndex = 5;
+            this.lblColumns.Text = "Columns:";
+            // 
+            // lstVwCols
+            // 
+            this.lstVwCols.FormattingEnabled = true;
+            this.lstVwCols.Location = new System.Drawing.Point(248, 54);
+            this.lstVwCols.Name = "lstVwCols";
+            this.lstVwCols.Size = new System.Drawing.Size(206, 290);
+            this.lstVwCols.TabIndex = 3;
+            // 
+            // tabSetting
+            // 
+            this.tabSetting.Controls.Add(this.lblTimestamp);
+            this.tabSetting.Controls.Add(this.iTimestamp);
+			this.tabSetting.Controls.Add(this.lblCreatedDateField);
+			this.tabSetting.Controls.Add(this.iCreatedDateField);
+            this.tabSetting.Controls.Add(this.chkGenerateProjectFile);
+            this.tabSetting.Controls.Add(this.dlIDEVersion);
+            this.tabSetting.Controls.Add(this.lblDBPrefix);
+            this.tabSetting.Controls.Add(this.iDBPrefix);
+            this.tabSetting.Controls.Add(this.Dir);
+            this.tabSetting.Controls.Add(this.label9);
+            this.tabSetting.Controls.Add(this.label8);
+            this.tabSetting.Controls.Add(this.lblIDEVersion);
+            this.tabSetting.Controls.Add(this.label7);
+            this.tabSetting.Controls.Add(this.label6);
+            this.tabSetting.Controls.Add(this.iOutputPath);
+            this.tabSetting.Controls.Add(this.iInherit);
+            this.tabSetting.Controls.Add(this.iPrefix);
+            this.tabSetting.Controls.Add(this.iNamespace);
+            this.tabSetting.Controls.Add(this.iAssembly);
+            this.tabSetting.Controls.Add(this.label5);
+            this.tabSetting.Controls.Add(this.chkOptions);
+            this.tabSetting.Location = new System.Drawing.Point(4, 22);
+            this.tabSetting.Name = "tabSetting";
+            this.tabSetting.Padding = new System.Windows.Forms.Padding(3);
+            this.tabSetting.Size = new System.Drawing.Size(612, 352);
+            this.tabSetting.TabIndex = 1;
+            this.tabSetting.Text = "Options";
+            this.tabSetting.UseVisualStyleBackColor = true;
+            // 
+            // chkGenerateProjectFile
+            // 
+            this.chkGenerateProjectFile.Location = new System.Drawing.Point(127, 183);
+            this.chkGenerateProjectFile.Name = "chkGenerateProjectFile";
+            this.chkGenerateProjectFile.Size = new System.Drawing.Size(200, 24);
+            this.chkGenerateProjectFile.TabIndex = 0;
+            this.chkGenerateProjectFile.Text = "Generate project file";
+            this.chkGenerateProjectFile.CheckedChanged += new System.EventHandler(this.chkGenerateProjectFile_CheckedChanged);
+            // 
+            // dlIDEVersion
+            // 
+            this.dlIDEVersion.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.dlIDEVersion.Enabled = false;
+            this.dlIDEVersion.FormattingEnabled = true;
+            this.dlIDEVersion.Items.AddRange(new object[] {
+            "VS 2005",
+            "VS 2003"});
+            this.dlIDEVersion.Location = new System.Drawing.Point(127, 210);
+            this.dlIDEVersion.Name = "dlIDEVersion";
+            this.dlIDEVersion.Size = new System.Drawing.Size(221, 21);
+            this.dlIDEVersion.TabIndex = 1;
+            // 
+            // lblDBPrefix
+            // 
+            this.lblDBPrefix.AutoSize = true;
+            this.lblDBPrefix.Location = new System.Drawing.Point(3, 89);
+            this.lblDBPrefix.Name = "lblDBPrefix";
+            this.lblDBPrefix.Size = new System.Drawing.Size(90, 13);
+            this.lblDBPrefix.TabIndex = 2;
+            this.lblDBPrefix.Text = "DB objects prefix:";
+            // 
+            // iDBPrefix
+            // 
+            this.iDBPrefix.Location = new System.Drawing.Point(127, 85);
+            this.iDBPrefix.Name = "iDBPrefix";
+            this.iDBPrefix.Size = new System.Drawing.Size(221, 20);
+            this.iDBPrefix.TabIndex = 3;
+            // 
+            // Dir
+            // 
+            this.Dir.Location = new System.Drawing.Point(334, 320);
+            this.Dir.Name = "Dir";
+            this.Dir.Size = new System.Drawing.Size(35, 20);
+            this.Dir.TabIndex = 5;
+            this.Dir.Text = "...";
+            this.Dir.UseVisualStyleBackColor = true;
+            this.Dir.Click += new System.EventHandler(this.Dir_Click);
+            // 
+            // label9
+            // 
+            this.label9.AutoSize = true;
+            this.label9.Location = new System.Drawing.Point(6, 303);
+            this.label9.Name = "label9";
+            this.label9.Size = new System.Drawing.Size(66, 13);
+            this.label9.TabIndex = 10;
+            this.label9.Text = "Output path:";
+            // 
+            // label8
+            // 
+            this.label8.AutoSize = true;
+            this.label8.Location = new System.Drawing.Point(3, 115);
+            this.label8.Name = "label8";
+            this.label8.Size = new System.Drawing.Size(62, 13);
+            this.label8.TabIndex = 9;
+            this.label8.Text = "Inherit from:";
+            // 
+            // lblIDEVersion
+            // 
+            this.lblIDEVersion.AutoSize = true;
+            this.lblIDEVersion.Enabled = false;
+            this.lblIDEVersion.Location = new System.Drawing.Point(3, 214);
+            this.lblIDEVersion.Name = "lblIDEVersion";
+            this.lblIDEVersion.Size = new System.Drawing.Size(66, 13);
+            this.lblIDEVersion.TabIndex = 11;
+            this.lblIDEVersion.Text = "IDE Version:";
+            // 
+            // label7
+            // 
+            this.label7.AutoSize = true;
+            this.label7.Location = new System.Drawing.Point(3, 63);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(76, 13);
+            this.label7.TabIndex = 8;
+            this.label7.Text = "Member prefix:";
+            // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.Location = new System.Drawing.Point(6, 37);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(93, 13);
+            this.label6.TabIndex = 7;
+            this.label6.Text = "Class namespace:";
+            // 
+            // iOutputPath
+            // 
+            this.iOutputPath.Location = new System.Drawing.Point(9, 320);
+            this.iOutputPath.Name = "iOutputPath";
+            this.iOutputPath.Size = new System.Drawing.Size(319, 20);
+            this.iOutputPath.TabIndex = 4;
+            // 
+            // iInherit
+            // 
+            this.iInherit.Location = new System.Drawing.Point(127, 111);
+            this.iInherit.Name = "iInherit";
+            this.iInherit.Size = new System.Drawing.Size(221, 20);
+            this.iInherit.TabIndex = 3;
+            // 
+            // iPrefix
+            // 
+            this.iPrefix.Location = new System.Drawing.Point(127, 59);
+            this.iPrefix.Name = "iPrefix";
+            this.iPrefix.Size = new System.Drawing.Size(221, 20);
+            this.iPrefix.TabIndex = 2;
+            // 
+            // iNamespace
+            // 
+            this.iNamespace.Location = new System.Drawing.Point(127, 33);
+            this.iNamespace.Name = "iNamespace";
+            this.iNamespace.Size = new System.Drawing.Size(221, 20);
+            this.iNamespace.TabIndex = 1;
+            // 
+            // iAssembly
+            // 
+            this.iAssembly.Location = new System.Drawing.Point(127, 7);
+            this.iAssembly.Name = "iAssembly";
+            this.iAssembly.Size = new System.Drawing.Size(221, 20);
+            this.iAssembly.TabIndex = 0;
+            // 
+            // label5
+            // 
+            this.label5.AutoSize = true;
+            this.label5.Location = new System.Drawing.Point(6, 11);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(81, 13);
+            this.label5.TabIndex = 1;
+            this.label5.Text = "Class assembly:";
+            // 
+            // chkOptions
+            // 
+            this.chkOptions.CheckOnClick = true;
+            this.chkOptions.FormattingEnabled = true;
+            this.chkOptions.Location = new System.Drawing.Point(385, 6);
+            this.chkOptions.Name = "chkOptions";
+            this.chkOptions.Size = new System.Drawing.Size(221, 334);
+            this.chkOptions.TabIndex = 5;
+            this.chkOptions.SelectedIndexChanged += new System.EventHandler(this.chkOptions_SelectedIndexChanged);
+            // 
+            // lblHelp
+            // 
+            this.lblHelp.AutoSize = true;
+            this.lblHelp.BackColor = System.Drawing.SystemColors.Highlight;
+            this.lblHelp.Font = new System.Drawing.Font("Verdana", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblHelp.ForeColor = System.Drawing.Color.White;
+            this.lblHelp.Location = new System.Drawing.Point(4, 7);
+            this.lblHelp.Name = "lblHelp";
+            this.lblHelp.Padding = new System.Windows.Forms.Padding(3);
+            this.lblHelp.Size = new System.Drawing.Size(31, 19);
+            this.lblHelp.TabIndex = 14;
+            this.lblHelp.Text = "<>";
+            // 
+            // iDatabase
+            // 
+            this.iDatabase.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.iDatabase.FormattingEnabled = true;
+            this.iDatabase.Location = new System.Drawing.Point(75, 416);
+            this.iDatabase.Name = "iDatabase";
+            this.iDatabase.Size = new System.Drawing.Size(244, 21);
+            this.iDatabase.TabIndex = 1;
+            this.iDatabase.SelectionChangeCommitted += new System.EventHandler(this.iDatabase_SelectionChangeCommitted);
+            // 
+            // Cancel
+            // 
+            this.Cancel.Location = new System.Drawing.Point(466, 414);
+            this.Cancel.Name = "Cancel";
+            this.Cancel.Size = new System.Drawing.Size(75, 23);
+            this.Cancel.TabIndex = 3;
+            this.Cancel.Text = "&Cancel";
+            this.Cancel.UseVisualStyleBackColor = true;
+            this.Cancel.Click += new System.EventHandler(this.Cancel_Click);
+            // 
+            // OK
+            // 
+            this.OK.Location = new System.Drawing.Point(547, 414);
+            this.OK.Name = "OK";
+            this.OK.Size = new System.Drawing.Size(75, 23);
+            this.OK.TabIndex = 4;
+            this.OK.Text = "&OK";
+            this.OK.UseVisualStyleBackColor = true;
+            this.OK.Click += new System.EventHandler(this.OK_Click);
+            // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(12, 419);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(56, 13);
+            this.label1.TabIndex = 4;
+            this.label1.Text = "Database:";
+            // 
+            // bSave
+            // 
+            this.bSave.Location = new System.Drawing.Point(385, 414);
+            this.bSave.Name = "bSave";
+            this.bSave.Size = new System.Drawing.Size(75, 23);
+            this.bSave.TabIndex = 2;
+            this.bSave.Text = "&Save";
+            this.bSave.UseVisualStyleBackColor = true;
+            this.bSave.Click += new System.EventHandler(this.bSave_Click);
+            // 
+            // lblTimestamp
+            // 
+            this.lblTimestamp.AutoSize = true;
+            this.lblTimestamp.Location = new System.Drawing.Point(3, 141);
+            this.lblTimestamp.Name = "lblTimestamp";
+            this.lblTimestamp.Size = new System.Drawing.Size(84, 13);
+            this.lblTimestamp.TabIndex = 13;
+            this.lblTimestamp.Text = "Timestamp column:";
+            // 
+            // iTimestamp
+            // 
+            this.iTimestamp.Location = new System.Drawing.Point(127, 137);
+            this.iTimestamp.Name = "iTimestamp";
+            this.iTimestamp.Size = new System.Drawing.Size(221, 20);
+            this.iTimestamp.TabIndex = 12;
+            // 
+            // lblCreatedDateField
+            // 
+            this.lblCreatedDateField.AutoSize = true;
+            this.lblCreatedDateField.Location = new System.Drawing.Point(3, 167);
+            this.lblCreatedDateField.Name = "lblTimestamp";
+            this.lblCreatedDateField.Size = new System.Drawing.Size(84, 13);
+            this.lblCreatedDateField.TabIndex = 13;
+            this.lblCreatedDateField.Text = "Created date column:";
+            // 
+            // iCreatedDateField
+            // 
+            this.iCreatedDateField.Location = new System.Drawing.Point(127, 163);
+            this.iCreatedDateField.Name = "iCreatedDateField";
+            this.iCreatedDateField.Size = new System.Drawing.Size(221, 20);
+            this.iCreatedDateField.TabIndex = 14;
+            // 
+            // l99_form
+            // 
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.ClientSize = new System.Drawing.Size(626, 441);
+            this.Controls.Add(this.lblHelp);
+            this.Controls.Add(this.bSave);
+            this.Controls.Add(this.label1);
+            this.Controls.Add(this.OK);
+            this.Controls.Add(this.Cancel);
+            this.Controls.Add(this.iDatabase);
+            this.Controls.Add(this.tabs);
+            this.MaximizeBox = false;
+            this.Name = "l99_form";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+            this.Text = "NHibernate OHM";
+            this.Load += new System.EventHandler(this.l99_form_Load);
+            this.tabs.ResumeLayout(false);
+            this.tabRel.ResumeLayout(false);
+            this.tabRel.PerformLayout();
+            this.tabViews.ResumeLayout(false);
+            this.tabViews.PerformLayout();
+            this.tabSetting.ResumeLayout(false);
+            this.tabSetting.PerformLayout();
+            this.ResumeLayout(false);
+            this.PerformLayout();
+
+        }
+
+        #endregion
+
+        private System.Windows.Forms.Label lblTimestamp;
+		private System.Windows.Forms.Label lblCreatedDateField;
+        private System.Windows.Forms.TextBox iTimestamp;
+		private System.Windows.Forms.TextBox iCreatedDateField;
+		private System.Windows.Forms.TabControl tabs;
+		private System.Windows.Forms.TabPage tabViews;
+		private System.Windows.Forms.TabPage tabSetting;
+		private System.Windows.Forms.ComboBox iDatabase;
+		private System.Windows.Forms.Button Cancel;
+		private System.Windows.Forms.Button OK;
+		private System.Windows.Forms.Label label1;
+		private System.Windows.Forms.Label lblColumns;
+		private System.Windows.Forms.ListBox lstVwCols;
+		private System.Windows.Forms.CheckedListBox chkOptions;
+		private System.Windows.Forms.TextBox iOutputPath;
+		private System.Windows.Forms.TextBox iInherit;
+		private System.Windows.Forms.TextBox iPrefix;
+		private System.Windows.Forms.TextBox iNamespace;
+		private System.Windows.Forms.TextBox iAssembly;
+		private System.Windows.Forms.Label label5;
+		private System.Windows.Forms.Label label9;
+		private System.Windows.Forms.Label label8;
+		private System.Windows.Forms.Label lblIDEVersion;
+		private System.Windows.Forms.Label label7;
+		private System.Windows.Forms.Label label6;
+		private System.Windows.Forms.Button Dir;
+		private System.Windows.Forms.FolderBrowserDialog pathFinder;
+		private System.Windows.Forms.Button bSave;
+        private System.Windows.Forms.TabPage tabRel;
+        private System.Windows.Forms.TreeView treeTa;
+        private System.Windows.Forms.Label pathTView;
+        private System.Windows.Forms.Button bSaveFK;
+        private System.Windows.Forms.ListBox lstFKcols;
+        private System.Windows.Forms.ComboBox lstFKTable;
+        private System.Windows.Forms.ListBox lstCols;
+        private System.Windows.Forms.Label lblTable;
+        private System.Windows.Forms.Label label10;
+		private System.Windows.Forms.Label label3;
+        private System.Windows.Forms.Button bRemap;
+        private System.Windows.Forms.Button bUnmap;
+        private System.Windows.Forms.Button bFkNewForeign;
+		private System.Windows.Forms.Label lblHelp;
+		private System.Windows.Forms.Button bMapVw;
+		private System.Windows.Forms.Button bUnmapVw;
+		private System.Windows.Forms.TreeView treeVws;
+		private System.Windows.Forms.Button bMapAllVw;
+        private System.Windows.Forms.Button bUnmapAllVw;
+		private System.Windows.Forms.Button bRemapAll;
+		private System.Windows.Forms.ToolTip toolTip;
+		private System.Windows.Forms.Button bMarkIdColTable;
+		private System.Windows.Forms.Button bMarkAsId;
+		private System.Windows.Forms.Button bNewZ2M;
+		private System.Windows.Forms.CheckBox chkGenerateProjectFile;
+		private System.Windows.Forms.ComboBox dlIDEVersion;
+		private System.Windows.Forms.Label lblDBPrefix;
+		private System.Windows.Forms.TextBox iDBPrefix;
+		
+	}
+ 
+
+	public class l99_Info : Info
+	{
+		public static bool _chkApplyPascalCase;
+	
+		public l99_Info(string f) : base(f) { }
+        public l99_Info(XmlDocument xml) : base(xml) { }
+		public ArrayList chooseViews {get { return ArrayList("views/it");}}
+
+		public String chooseDatabase { get { return Value("chooseDatabase"); } set { SetValue("chooseDatabase", value); } }
+		public String outputPath { get { return Value("outputPath"); } set { SetValue("outputPath", value); } }
+		public String classNamespace { get { return Value("classNamespace"); } set { SetValue("classNamespace", value); } }
+		public String assemblyName { get { return Value("assemblyName"); } set { SetValue("assemblyName", value); } }
+		public String inheritFrom { get { return Value("inheritFrom"); } set { SetValue("inheritFrom", value); } }
+		public String timestampClass { get { return Value("timestampClass"); } set { SetValue("timestampClass", value); } }
+		public String createdDateColumn { get { return Value("createdDateColumn"); } set { SetValue("createdDateColumn", value); } }
+		public String memberPrefix { get { return Value("memberPrefix"); } set { SetValue("memberPrefix", value); } }
+		public String dbPrefix { get { return Value("dbPrefix"); } set { SetValue("dbPrefix", value); } }
+
+		// project generation
+		public bool generateProjectFile { get { return Bool("chkGenerateProjectFile"); } set { SetValue("chkGenerateProjectFile", value); } }
+		public String ideVersion { get { return (Value("dlIDEVersion")!="")?Value("dlIDEVersion"):"0"; } set { SetValue("dlIDEVersion", value); } }
+
+		public bool chkMapping2_2 { get { return Bool("chkMapping2_2"); } set { SetValue("chkMapping2_2", value); } }
+		public bool chkMapping { get { return Bool("chkMapping"); } set { SetValue("chkMapping", value); } }
+        public bool chkIncTables { get { return Bool("chkIncTables"); } set { SetValue("chkIncTables", value); } }
+        public bool chkIncViews { get { return Bool("chkIncViews"); } set { SetValue("chkIncViews", value); } }
+		public bool chkClass { get { return Bool("chkClass"); } set { SetValue("chkClass", value); } }
+		public bool chkOneMappFile { get { return Bool("chkOneMappFile"); } set { SetValue("chkOneMappFile", value); } }
+		public bool chkUseNull { get { return Bool("chkUseNull"); } set { SetValue("chkUseNull", value); } }
+		public bool chkEqualsHashCode { get { return Bool("chkEqualsHashCode"); } set { SetValue("chkEqualsHashCode", value); } }
+		public bool chkSerializeCode { get { return Bool("chkSerializeCode"); } set { SetValue("chkSerializeCode", value); } }
+		public bool chkLazyClass { get { return Bool("chkLazyClass"); } set { SetValue("chkLazyClass", value); } }
+		public bool chkReadOnly { get { return Bool("chkReadOnly"); } set { SetValue("chkReadOnly", value); } }
+		public bool chkRepository { get { return Bool("chkRepository"); } set { SetValue("chkRepository", value); } }
+		public bool chkEnableNullTypes { get { return Bool("chkEnableNullTypes"); } set { SetValue("chkEnableNullTypes", value); } }
+		public bool chkCOMVisible { get { return Bool("chkCOMVisible"); } set { SetValue("chkCOMVisible", value); } }
+		public bool chkApplyPascalCase { get { return Bool("chkApplyPascalCase"); } set { SetValue("chkApplyPascalCase", value); } }
+		public bool chkUseGenerics { get { return Bool("chkUseGenerics"); } set { SetValue("chkUseGenerics", value); } }
+		public bool chkImplementICloneable { get { return Bool("chkImplementICloneable"); } set { SetValue("chkImplementICloneable", value); } }
+
+		public String this[String index]
+		{
+			get { return Value(index); }
+			set { SetValue(index, value); }
+		}
+	
+	}
+
+
+	public class Info
+	{
+		private XmlDocument xml;
+		private string filename;
+
+        public XmlDocument doc { get { return xml; } }
+        public String FileName { get { return filename; } set { filename = value; } }
+
+        public Info() { this.xml = new XmlDocument(); }
+        public Info(XmlDocument xml) { this.xml = xml; }
+        public Info(string filename)
+		{
+			this.filename = filename;
+			xml = new XmlDocument();
+			try
+			{
+				xml.Load(filename);
+			}
+			catch (Exception)
+			{
+				RemoveAll();
+			}
+		}
+		public bool HasValues
+		{//is file loaded?? 
+			get { return xml.DocumentElement.ChildNodes.Count > 0; }
+		}
+		public XmlNode AppendChild(XmlNode nd,string name)
+		{
+			return nd.AppendChild(xml.CreateElement(name, nd.OwnerDocument.DocumentElement.NamespaceURI));
+		}
+		public XmlNode AppendChild(string name)
+		{
+            return xml.DocumentElement.AppendChild(xml.CreateElement(name, xml.DocumentElement.NamespaceURI));
+		}
+		public void RemoveAll() { xml.RemoveAll(); xml.LoadXml("<p/>"); }
+		public ArrayList ArrayList(string name)
+		{
+			ArrayList lst = new ArrayList();
+			XmlNodeList nds = xml.DocumentElement.SelectNodes(name);
+			if (nds != null) foreach (XmlNode nd in nds) lst.Add(nd.FirstChild.Value);
+			return lst;
+		}
+		public void Save()
+		{
+			XmlWriterSettings settings = new XmlWriterSettings();
+			settings.Indent = true;
+			XmlWriter xw;
+			xw = XmlWriter.Create(filename, settings);
+			
+			xml.WriteTo(xw);
+			xw.Close();
+		}
+		public string Value(string name)
+		{
+			return Value(xml.DocumentElement, name);
+		}
+		public bool Bool(string name)
+		{
+			return Bool(name, false);
+		}
+		public bool Bool(string name, bool def)
+		{
+			string v = Value(name);
+			return (v == String.Empty) ? def : bool.Parse(v);
+		}
+		public string Value(XmlNode nd, string name)
+		{
+			XmlNode nv;
+			if ((nv = nd.SelectSingleNode(name)) != null && nv.FirstChild!=null)
+				return nv.FirstChild.Value;
+			return String.Empty;
+		}
+
+        public XmlNode SetValue(String name) { return SetValue(xml.DocumentElement, name, null); }
+        public XmlNode SetValue(String name, object o) { return SetValue(xml.DocumentElement, name, o); }
+
+		public XmlNode SetValue(XmlNode nd, String name, object o)
+		{
+			String val = o == null ? String.Empty : o.ToString();
+			XmlNode elem = nd.SelectSingleNode(name);
+			if(elem==null)
+                elem = nd.OwnerDocument.CreateElement(name, nd.OwnerDocument.DocumentElement.NamespaceURI);
+			elem.RemoveAll();
+			if (val != String.Empty)
+			{
+				
+				if (val.IndexOfAny(new char[] { '&', '>', '<', '"' }) < 0)
+					elem.AppendChild(nd.OwnerDocument.CreateTextNode(val));
+				else
+					elem.AppendChild(nd.OwnerDocument.CreateCDataSection(val));
+			}
+			nd.AppendChild(elem);
+			return elem;
+
+		}
+
+        public XmlNode AddValue(String name)
+        { return AddValue(xml.DocumentElement, name, null); }
+        public XmlNode AddValue(XmlNode nd, String name)
+        { return AddValue(nd, name, null); }
+
+		public XmlNode AddValue(XmlNode nd, String name, object o)
+		{
+			String val = o == null ? String.Empty : o.ToString();
+            XmlNode elem = nd.OwnerDocument.CreateElement(name, nd.OwnerDocument.DocumentElement.NamespaceURI);
+			if (val != String.Empty)
+			{
+				if (val.IndexOfAny(new char[] { '&', '>', '<', '"' }) < 0)
+					elem.AppendChild(nd.OwnerDocument.CreateTextNode(val));
+				else
+					elem.AppendChild(nd.OwnerDocument.CreateCDataSection(val));
+			}
+			nd.AppendChild(elem);
+            return elem;
+		}
+
+        public XmlAttribute AddAtt(string name, string val)
+        {
+            return AddAtt(null, name, val);
+        }
+
+        public XmlAttribute AddAtt(XmlNode nd, string name, string val)
+        {
+			if (val == String.Empty) return null;
+			if (nd == null) nd = xml.DocumentElement;
+            XmlAttribute att = nd.OwnerDocument.CreateAttribute(name);
+            att.Value = val;
+            nd.Attributes.Append(att);
+            return att;
+        }
+
+        public static string ToPropertyName(string name)
+        {
+			return ToPascalCase(name.Replace(" ", String.Empty));
+        }
+
+		public static string ApplyPascalCase(string name)
+		{
+            string notStartingAlpha = Regex.Replace(name, "^[^a-zA-Z]+", "");
+            string workingString = ToLowerExceptCamelCase(notStartingAlpha);
+            workingString = RemoveSeparatorAndCapNext(workingString);
+            return workingString;
+		}
+		
+        public static string ToPascalCase(string name)
+        {
+			// switch loopback
+			if(!l99_Info._chkApplyPascalCase) return name;
+			
+			return ApplyPascalCase(name);
+        }
+
+        public static string RemoveSeparatorAndCapNext(string input)
+        {
+            string dashUnderscore = "-_";
+            string workingString = input;
+            char[] chars = workingString.ToCharArray();
+            int under = workingString.IndexOfAny(dashUnderscore.ToCharArray());
+            while (under > -1)
+            {
+                chars[under + 1] = Char.ToUpper(chars[under + 1], CultureInfo.InvariantCulture);
+                workingString = new String(chars);
+                under = workingString.IndexOfAny(dashUnderscore.ToCharArray(), under + 1);
+            }
+            chars[0] = Char.ToUpper(chars[0], CultureInfo.InvariantCulture);
+            workingString = new string(chars);
+            return Regex.Replace(workingString, "[-_]", "");
+
+		}
+		public static int IndexOfCol(IColumn c)
+		{
+			for (int n = 0; n < c.Table.Columns.Count; n++)
+				if (c == c.Table.Columns[n]) return n;
+			return -1;
+		}
+		public static string CheckName(IList lst, string n)
+		{
+			bool ok= false;
+			do
+			{
+				if (lst is IColumns)
+					ok = (lst as IColumns)[n] != null || (lst as IColumns)[0].Table.Alias == n;
+				if (lst is ITables)
+					ok = (lst as ITables)[n] != null;
+				if (ok)
+					n = n + "X";
+			} while (ok);
+			return n;
+		}
+        public static string ToLowerExceptCamelCase(string input)
+        {
+            char[] chars = input.ToCharArray();
+            for (int i = 0; i < chars.Length; i++)
+            {
+                int left = (i > 0 ? i - 1 : i);
+                int right = (i < chars.Length - 1 ? i + 1 : i);
+                if (i != left && i != right)
+                {
+                    if (Char.IsUpper(chars[i]) && Char.IsLetter(chars[left]) && Char.IsUpper(chars[left]))
+                    {
+                        chars[i] = Char.ToLower(chars[i], CultureInfo.InvariantCulture);
+                    }
+                    else if (Char.IsUpper(chars[i]) && Char.IsLetter(chars[right]) && Char.IsUpper(chars[right]))
+                    {
+                        chars[i] = Char.ToLower(chars[i], CultureInfo.InvariantCulture);
+                    }
+                    else if (Char.IsUpper(chars[i]) && !Char.IsLetter(chars[right]))
+                    {
+                        chars[i] = Char.ToLower(chars[i], CultureInfo.InvariantCulture);
+                    }
+                }
+            }
+            if(chars.Length>0)
+                chars[chars.Length - 1] = Char.ToLower(chars[chars.Length - 1], CultureInfo.InvariantCulture);
+            return new string(chars);
+        }
+
+        public static IForeignKey GetFK(ITable table,XmlNode nfk)
+        {
+            if (nfk.Attributes["user"] != null && Boolean.Parse(nfk.Attributes["user"].Value))
+                return new UserFk(table, nfk);
+            IForeignKey fk = table.ForeignKeys[nfk.Attributes["name"].Value];
+            if (fk!=null && nfk.Attributes["alias"] != null)
+                fk.Alias = nfk.Attributes["alias"].Value;
+            return fk;
+        }
+
+        public static IForeignKey IsColumnGenerateForeign(IColumn c)
+        {
+            foreach (IForeignKey fk in c.ForeignKeys)
+            {
+                if (fk.ForeignTable.Name == c.Table.Name)
+                {
+                    foreach (IColumn fc in fk.ForeignColumns)
+                    {
+                        if (fc.Name == c.Name)
+                        {
+                            return fk;
+                        }
+                    }
+
+                }
+            }
+            return null;
+        }
+
+
+    }
+
+
+	public class TRelation
+	{
+		UserFk ufk;
+		TableRelation tr;
+		public TRelation(ITable table, IForeignKey fk)
+		{
+			this.tr = null; ufk = fk as UserFk;
+			if( this.ufk==null)
+				this.tr = new TableRelation(table, fk);
+		}
+
+		public bool IsManyToMany
+		{
+			get {
+				if(this.tr!=null)
+					return (tr.IsManyToMany && tr.ForeignTable.Columns.Count == tr.ForeignTable.ForeignKeys.Count);
+				return ufk.IsManyToMany;
+			}
+		}
+
+		public bool IsManyToOne
+		{
+			get
+			{
+				if (this.tr == null)
+					return ufk.IsManyToOne;
+				if (!this.IsSelfReference)
+					return tr.IsManyToOne;
+				IColumn c = this.tr.PrimaryColumns[0];
+				return (c.HasDefault || c.IsNullable);
+			}
+		}
+
+		public bool IsZeroToMany
+		{
+			get
+			{
+				if (this.tr == null)
+					return ufk.IsZeroToMany;
+				if (!this.IsSelfReference)
+					return tr.IsZeroToMany;
+				IColumn c = this.tr.PrimaryColumns[0];
+				return !(c.HasDefault || c.IsNullable);
+			}
+		}
+		public bool IsOneToOne
+		{
+			get
+			{
+				return (this.tr != null)?tr.IsOneToOne:ufk.IsOneToOne;
+				/*
+				IColumn c= (this.tr != null)?
+					this.tr.PrimaryColumns[0] : this.ufk.PrimaryColumns[0];
+				return (c.HasDefault || c.IsNullable);
+				 */
+			}
+		}
+
+
+		public bool IsSelfReference
+		{
+			get
+			{
+				return (this.tr != null)? tr.IsSelfReference : ufk.IsSelfReference;
+			}
+		}
+
+		public ITable PrimaryTable
+		{
+			get
+			{
+				return (this.tr != null)? tr.PrimaryTable: ufk.PrimaryTable;
+			}
+		}
+		public ITable ForeignTable
+		{
+			get
+			{
+				return (this.tr != null)?tr.ForeignTable:ufk.ForeignTable;
+			}
+		}
+		public ITable CrossReferenceTable
+		{
+			get
+			{
+				return (this.tr != null)?tr.CrossReferenceTable:ufk.CrossReferenceTable;
+			}
+		}
+		public IColumns CrossReferenceColumns
+		{
+			get
+			{
+				if (this.tr != null)
+					return (tr.CrossReferenceColumns);
+				return null;
+			}
+		}
+	}
+	public class UserCols : ArrayList,IColumns
+	{
+		public string UserDataXPath
+		{
+			get { return String.Empty; }
+		}
+
+        public IColumn this[object index]
+		{
+			get {
+				string name = index as string;
+				if (name!=null)
+				{
+					foreach (object c in this)
+					{
+						if ( ((c is IColumn)  && (c as IColumn).Name == name) ||
+                            ((c is UTable) && (c as UTable).Name == name))
+ 							return c as IColumn;
+					}
+					return null;
+				}
+				return base[(int)index] as IColumn;
+			}
+			
+		}
+	
+	}
+
+    public class UserFk : IForeignKey
+    {
+        private string _name;
+        private IColumns _fcols;
+        private ITable _ftable;
+        private IColumns _pcols;
+        private string _pkname;
+        private ITable _ptable;
+		private bool isPrimary; // false: ManyToOne, true: ZeroToMany
+		private bool _isone2one, _ism2m, _isnewobject;
+
+        public object DatabaseSpecificMetaData(string key) { return null; }
+		public UserFk(string name, ITable ptable, IColumns pcols,
+			ITable ftable, IColumns fcols, bool isPrimary)
+        {
+			this._name = name= this._pkname = Info.ToPropertyName( name);
+			this._pcols = _fcols = null;
+			this._ptable = _ftable = null;
+			this._isone2one = false;
+			this._ism2m = false;
+			if (isPrimary) this._ptable = ptable; else this._ftable = ptable;
+			this.isPrimary = isPrimary;
+			_isnewobject = true;
+            Set(pcols, ftable, fcols);
+        }
+
+
+		public UserFk(ITable table, XmlNode nfk)
+		{
+            IDatabase database= table.Database;
+			_fcols = null;
+			if (nfk.Attributes["user"] != null && !Boolean.Parse(nfk.Attributes["user"].Value))
+				return;
+			XmlNode npt = nfk.SelectSingleNode("p");
+			XmlNode nft = nfk.SelectSingleNode("f");
+			ITable ptable = database.Tables[npt.Attributes["name"].Value];
+			ITable ftable = database.Tables[nft.Attributes["name"].Value];
+
+			this._name= nfk.Attributes["name"].Value;
+			this._isone2one = nfk.Attributes["o2o"] != null && Boolean.Parse(nfk.Attributes["o2o"].Value);
+			this._ism2m = nfk.Attributes["m2m"] != null && Boolean.Parse(nfk.Attributes["m2m"].Value);
+			//
+			if(nfk.Attributes["z2m"] != null)
+				this.isPrimary =  Boolean.Parse(nfk.Attributes["z2m"].Value);				
+			else
+				this.isPrimary = (table.Name == ptable.Name);
+	
+			UserCols pcols = new UserCols();
+			UserCols fcols = new UserCols();
+			foreach (XmlNode nc in npt.SelectNodes("c"))
+				pcols.Add(ptable.Columns[nc.Attributes["name"].Value]);
+			foreach (XmlNode nc in nft.SelectNodes("c"))
+				fcols.Add(ftable.Columns[nc.Attributes["name"].Value]);
+
+
+			this._fcols = fcols;
+			this._ftable = ftable;
+			this._pcols = pcols;
+			this._ptable = ptable; 
+			//Set(pcols, ftable, fcols );
+			
+		}
+
+		
+		public bool IsPrimary { get { return isPrimary; } }
+		public bool IsOK() { return _fcols != null && _ftable != null && _pcols != null; }
+		public void Set(IColumns pcols,
+			ITable ftable, IColumns fcols
+			)
+		{
+			if (this.isPrimary)
+			{
+				_fcols = fcols;
+				_ftable = ftable;
+				_pcols = pcols;
+			}
+			else
+			{
+				_fcols = pcols;
+				_ptable = ftable;
+				_pcols = fcols;
+			}
+		}
+		public string Alias
+        {
+			get { return _name; }
+            set { _name= value; }
+        }
+
+        public IPropertyCollection AllProperties { get { return null; } }
+        public string Deferrability  { get { return String.Empty; } }
+        public string DeleteRule { get { return String.Empty; } }
+        public IColumns ForeignColumns { get { return _fcols; } }
+        public ITable ForeignTable { get { return _ftable; } }
+        public IPropertyCollection GlobalProperties { get { return null; } }
+        public string Name { get { return _name; }}
+        public IColumns PrimaryColumns { get { return _pcols; } }
+        public string PrimaryKeyName { get { return _pkname; }}
+        public ITable PrimaryTable{ get { return _ptable; } }
+        public IPropertyCollection Properties { get { return null; } }
+        public string UpdateRule { get { return String.Empty; } }
+        public string UserDataXPath { get { return String.Empty; }}
+
+
+
+		public bool IsManyToMany
+		{
+			get { return _ism2m; }
+			set { _ism2m = value; }
+		}
+
+		public bool IsNewObject
+		{
+			get { return _isnewobject; }
+			set { _isnewobject = value; }
+		}
+		public bool IsManyToOne
+		{
+			get
+			{
+				if (!this.IsManyToMany && !this.IsOneToOne)
+					return !this.isPrimary;
+				return false;
+			}
+		}
+
+		public bool IsOneToOne
+		{
+			get {return _isone2one;}
+			set { _isone2one = value; }
+		}
+
+		public bool IsZeroToMany
+		{
+			get
+			{
+				if (!this.IsManyToMany && !this.IsOneToOne)
+					return this.isPrimary;
+				return false;
+			}
+		}
+
+		public bool IsSelfReference
+		{
+			get
+			{
+				return _ftable.Name == _ptable.Name;
+			}
+		}
+
+		
+		public ITable CrossReferenceTable
+		{
+			get
+			{
+				return null;
+			}
+		}
+	
+
+    }
+
+
+	public class UTable 
+	{
+		private string _alias;
+		private string _name;
+		private ITable _table; //id owner
+        UTableCols _columns;
+
+		public UTable(ITable _table, bool init)
+		{
+            this._columns = new UTableCols();
+            this._table = _table;
+            
+			this._name = Info.CheckName(
+					_table.Database.Tables,
+					Info.ToPropertyName(_table.Alias) + "Id");
+			this._alias = Info.CheckName(_table.Columns, "Id");
+            if (init)
+            {
+                foreach (IColumn c in _table.PrimaryKeys)
+                {
+                    //ther order is important!!:
+                    IForeignKey fk = Info.IsColumnGenerateForeign(c);
+                    if (fk!=null)
+                    {
+                        if (this._columns.IndexOfKey(fk.Name) < 0)
+                        {
+                            fk.Alias = Info.ApplyPascalCase(c.Name);
+                            this._columns.Add(fk);
+                        }
+                    }
+                    else if (this._columns.IndexOfKey(c.Name) < 0)
+                    {
+                        this._columns.Add(c);
+                    }
+                }
+
+            }
+
+		}
+
+        public static UTable Create(IDatabase database, XmlNode nfk)
+		{
+			//if (nfk.Attributes["user"] != null && !Boolean.Parse(nfk.Attributes["user"].Value))
+			//    return null;
+			UTable ut = new UTable(database.Tables[nfk.Attributes["table"].Value], false);
+            ut.Alias = nfk.Attributes["alias"].Value;
+			ut._name = nfk.Attributes["name"].Value;
+			foreach (XmlNode nc in nfk.SelectNodes("c | fk"))
+			{
+                if (nc.Name == "c")
+                {
+                    if (ut.Owner.Columns[nc.Attributes["name"].Value] == null) continue;
+                    if (nc.Attributes["alias"] != null)
+                        ut.Owner.Columns[nc.Attributes["name"].Value].Alias = nc.Attributes["alias"].Value;
+                    ut._columns.Add(ut.Owner.Columns[nc.Attributes["name"].Value]);
+                }
+                else
+                {
+                    IForeignKey fk = Info.GetFK(ut.Owner, nc);
+                    if (fk != null) 
+                        ut._columns.Add(fk);
+                }
+            }
+
+			return ut;
+		}
+
+		public ITable  Owner
+		{
+			get { return _table; }
+		}
+		public string Alias
+		{
+			get { return _alias; }
+			set { _alias = value; }
+		}
+		public string Name
+		{
+			get { return _name; }
+		}
+		public string LanguageType
+		{
+			get { return _name; }
+		}
+		public IDatabase Database { get { return _table.Database; } }
+		public string Description { get { return "Object used as ID of "+_table.Alias; } }
+        public IList Columns { get { return this._columns; } }
+		public string Type { get { return "COMPID"; } }
+		
+
+	}
+
+    public class UTableCols : ArrayList
+    {
+
+        public int IndexOfKey(string name)
+        {
+            int n = -1;
+            foreach (object c in this)
+            {
+                n++;
+                if (((c is IForeignKey) && (c as IForeignKey).Name == name) ||
+                    ((c is IColumn) && (c as IColumn).Name == name))
+                    return n;
+            }
+            return -1;
+        }
+        public object this[object index]
+        {
+            get
+            {
+                if (index is string)
+                {
+                    int n = IndexOfKey(index as string);
+                    if (n < 0)
+                        return null;
+                    return base[n];
+                }
+                if ((int)index < 0 || (int)index >= this.Count)
+                    return null;
+                return base[(int)index];
+            }
+
+        }
+
+    }
+##|GUI_END
+##|BODY_MODE Markup
+##|BODY_ENGINE .Net Script
+##|BODY_LANGUAGE C#
+##|BODY_TAG_START <%
+##|BODY_TAG_END %>
+##|BODY_BEGIN
+<%#REFERENCE System.Windows.Forms.dll,System.Xml.dll,System.Drawing.dll %><%#REFERENCE System.Xml.dll %><%#NAMESPACE System.IO,System.Xml,System.Xml.XPath,System.Globalization,System.Text, System.Text.RegularExpressions,Dnp.Utils  %><%
+
+public class GeneratedTemplate : DotNetScriptTemplate
+{
+	private string _myversion= "Create By MyGeneration\r\nbased on OHM (zym)\r\nCreate On:" + DateTime.Now;
+	private string _tableName;
+	private string _className;
+	private string _exportPath;
+	private string _fileName;
+	private string _nameSpace;
+	private string _assemblyName;
+	private string _inheritFrom;
+	private string _prefix;
+	private string _path2Entity; 
+	private string _path2Interface; 
+	private string _path2Repository; 
+	private string _path2RowMapper; 
+	
+	private bool _createReadOnly;
+	private bool _generateEqualsHashCode;
+	private bool _generateSerializeCode;
+	private bool _enableLazyClass;
+	private bool _useNull;
+	private bool _enableNullTypes;
+	private bool _implementICloneable;
+	private bool _validateStr;
+	
+	private StringBuilder _projectContentCS = new StringBuilder();
+	private StringBuilder _projectContentXML = new StringBuilder();
+
+	private string _NullSufix;
+	private l99_Info info;
+	private string _IdentityFieldName;
+	private IDatabase _database;
+	private ITable _workingTable;
+	private IView _workingView;
+	
+	// project generation fields
+	private bool _createProjectFiles;
+	private string _ide;
+	
+	public GeneratedTemplate( ZeusContext context ) : base( context ) {}
+
+	public override void Render()
+	{
+		info= new l99_Info(input["xmlinfo"] as XmlDocument);
+		l99_Info._chkApplyPascalCase = info.chkApplyPascalCase;
+
+		_exportPath = info.outputPath;
+		_nameSpace = info.classNamespace;
+		_assemblyName = info.assemblyName;
+		_inheritFrom = info.inheritFrom;
+		_prefix = info.memberPrefix;
+		
+		// project generation
+		_createProjectFiles = info.generateProjectFile;
+		_ide = (info.ideVersion=="0")?"2005":"2003";
+		
+		_createReadOnly = info.chkReadOnly;
+		_generateEqualsHashCode = info.chkEqualsHashCode;
+		_generateSerializeCode = info.chkSerializeCode;
+		_useNull = info.chkUseNull;
+		_enableNullTypes = info.chkEnableNullTypes;
+		_enableLazyClass = info.chkLazyClass;
+		_implementICloneable = info.chkImplementICloneable;
+		_validateStr = true;
+		_NullSufix = (_enableNullTypes ? "?" : "");
+		_database= MyMeta.Databases[info.chooseDatabase];
+
+		HbmGenerator.Build(info, _database);
+		
+		GenerateAllFiles();
+		output.clear();
+
+		output.writeln("Ready!");
+		output.writeln("Files generated in:\n\t"+info.outputPath);
+		if(input["configFile"]!=null)
+			output.writeln("\nSession saved in:\n\t"+(string)input["configFile"]);
+	}
+
+	private void GenerateAllFiles()
+	{
+		if( !info.chkClass )
+			return;
+		_path2Entity= Path.Combine( _exportPath, "Models");
+		Directory.CreateDirectory( _path2Entity);
+		
+		_path2Interface = Path.Combine( _exportPath, "Interface");
+		Directory.CreateDirectory( _path2Interface);
+		
+		_path2Repository = Path.Combine( _exportPath, "Repository");
+		Directory.CreateDirectory( _path2Repository);
+		
+		_path2RowMapper = Path.Combine( _exportPath, "Repository/RowMapper");
+		Directory.CreateDirectory( _path2RowMapper);
+		
+		_workingView=null;
+		
+		//创建实体类
+		foreach (XmlNode nt in info.doc.DocumentElement.SelectNodes(
+                String.Format("database[@db='{0}' and @driver='{1}']/t", 
+					_database.Name, _database.Root.DriverString)))
+		{
+			_tableName= nt.Attributes["name"].Value;
+			_workingTable = _database.Tables[_tableName];
+			_className = nt.Attributes["alias"].Value;
+			GenerateClassFile( nt);
+		}
+		
+		//创建接口
+		foreach (XmlNode nt in info.doc.DocumentElement.SelectNodes(
+                String.Format("database[@db='{0}' and @driver='{1}']/t", 
+					_database.Name, _database.Root.DriverString)))
+		{
+			_tableName= nt.Attributes["name"].Value;
+			_workingTable = _database.Tables[_tableName];
+			_className = nt.Attributes["alias"].Value;
+			GenerateInterfacesFile( nt);
+		}
+		
+		//创建接口实现
+		foreach (XmlNode nt in info.doc.DocumentElement.SelectNodes(
+                String.Format("database[@db='{0}' and @driver='{1}']/t", 
+					_database.Name, _database.Root.DriverString)))
+		{
+			_tableName= nt.Attributes["name"].Value;
+			_workingTable = _database.Tables[_tableName];
+			_className = nt.Attributes["alias"].Value;
+			GenerateRepositoryFile(nt);
+		}
+		
+		//创建RowMapper
+		foreach (XmlNode nt in info.doc.DocumentElement.SelectNodes(
+                String.Format("database[@db='{0}' and @driver='{1}']/t", 
+					_database.Name, _database.Root.DriverString)))
+		{
+			_tableName= nt.Attributes["name"].Value;
+			_workingTable = _database.Tables[_tableName];
+			_className = nt.Attributes["alias"].Value;
+			GenerateRowMapperFile(nt);
+		}
+		
+		GenerateRepositoryFactory();
+
+        _workingTable= null;
+        _createReadOnly= true; 
+        foreach (XmlNode nt in info.doc.DocumentElement.SelectNodes(
+                String.Format("database[@db='{0}' and @driver='{1}']/v", 
+					_database.Name, _database.Root.DriverString)))
+		{
+			_tableName= nt.Attributes["name"].Value;
+			_workingView= _database.Views[_tableName];
+			_className = nt.Attributes["alias"].Value;
+			GenerateClassFile( nt);
+				
+		}
+		
+	}
+	
+	private void GenerateRepositoryFactory()
+	{
+	%>/*
+<%= _myversion %>
+*/
+using System;
+using System.Collections.Generic;
+using <%= _nameSpace %>.Data;
+
+namespace <%= _nameSpace %>.DALFactory
+{
+    public class RepositoryFactory
+    {
+        private static readonly string AssemblyFileName = "Mxt.SQLServerDAL";
+        private static readonly string Namespace = "<%= _nameSpace %>.Data";
+
+        private static IDictionary<Type, object> _typesOfRepository = new Dictionary<Type, object>();
+<%
+		foreach (XmlNode nt in info.doc.DocumentElement.SelectNodes(
+                String.Format("database[@db='{0}' and @driver='{1}']/t", 
+					_database.Name, _database.Root.DriverString)))
+		{
+			_tableName= nt.Attributes["name"].Value;
+			_workingTable = _database.Tables[_tableName];
+			_className = nt.Attributes["alias"].Value;
+			%>
+		/// <summary>
+        /// 创建I<%=_className%>Repository实体
+        /// </summary>
+        /// <returns></returns>
+        public static I<%=_className%>Repository Create<%=_className%>Repository()
+        {
+            return (I<%=_className%>Repository)Create(typeof(I<%=_className%>Repository), () =>
+            {
+                return Activator.CreateInstance(AssemblyFileName, String.Format("{0}.<%=_className%>Repository", Namespace));
+            });
+        }			
+<%
+			
+		}
+		%>
+		/// <summary>
+        /// 创建实例
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="creater"></param>
+        /// <returns></returns>
+        private static object Create(Type type, Func<object> creater)
+        {
+            if( _typesOfRepository.ContainsKey(type) )
+            {
+                return _typesOfRepository[type];
+            }
+            else
+            {
+                return creater();
+            }
+        }
+    }
+}
+<%
+		_fileName = "RepositoryFactory.cs";
+
+		output.save( Path.Combine( _exportPath, _fileName ), false );
+		output.clear();
+	}
+
+    private IColumns Columns 
+    {
+    get { return _workingTable== null? _workingView.Columns:_workingTable.Columns;}    
+    }
+
+	//read guid of the existing project
+	private string GetGuid( string fileName, string searchString ){
+		string guid = System.Guid.NewGuid().ToString().ToUpper();
+		if( File.Exists( fileName ) ){
+			TextReader tx = new StreamReader( fileName );
+			string txt = tx.ReadToEnd();
+			tx.Close();
+			int i = txt.IndexOf( searchString );
+			if( i > 10 ){
+				return txt.Substring( i + searchString.Length, 36 );
+			}
+		}
+		return guid;
+	}
+	
+	private string GetSourceControl( int v ){
+		string fileName = Path.Combine( _exportPath, _assemblyName + ".csproj" );
+		if( !File.Exists( fileName ) ) return "";
+		TextReader tx = new StreamReader( fileName );
+		string txt = tx.ReadToEnd();
+		tx.Close();
+		switch(v){
+		case 2003:
+			if(txt.Length > 20 && txt.Substring(0,21) != "<VisualStudioProject>") return "";
+			break;
+		case 2005:
+			if(txt.Length > 8 && txt.Substring(0,9) != "<Project ") return "";
+			break;
+		}
+		StringBuilder sb = new StringBuilder();
+		AddPrjPropVal(v, "SccProjectName", txt, sb);
+		AddPrjPropVal(v, "SccLocalPath", txt, sb);
+		AddPrjPropVal(v, "SccAuxPath", txt, sb);
+		AddPrjPropVal(v, "SccProvider", txt, sb);
+		return sb.ToString();
+	}
+	
+	private void AddPrjPropVal( int v, string prpName, string prjTxt, StringBuilder sb ){
+		int i = prjTxt.IndexOf( prpName );
+		if( i < 0 ) return;
+		i = prjTxt.IndexOf(( v == 2003 ? "=" : ">" ), i + prpName.Length) + 1;
+		switch(v){
+		case 2003:
+			sb.Append( "\x000D\x000A        " + prpName + " =" + prjTxt.Substring(i, prjTxt.IndexOf("\x000D", i) - i) );
+			return;
+		case 2005:
+			sb.Append( "\x000D\x000A    <" + prpName + ">" + prjTxt.Substring(i, prjTxt.IndexOf("/>", i) - i) + "</" + prpName + ">" );
+			return;
+		}
+	}
+
+	private void AddProjectFileContent()
+	{
+		if(!( info.chkClass || info.chkMapping ))return;
+		string xbmFile = _className + ".hbm.xml";
+		switch(_ide){
+			case "2003":
+				if( info.chkClass ) _projectContentCS.Append( @"
+****************<File
+********************RelPath = """ ).Append( Path.GetFileName(_path2Entity) + @"\").Append( _className ).Append( @".cs""
+********************SubType = ""Code""
+********************BuildAction = ""Compile""
+****************/>" );
+				
+				if( info.chkMapping && File.Exists(HbmGenerator._path2Maps + @"\" + xbmFile) ) _projectContentCS.Append( @"
+****************<File
+********************RelPath = """ ).Append( Path.GetFileName(HbmGenerator._path2Maps) + @"\" ).Append( xbmFile ). Append( @"""
+********************BuildAction = ""EmbeddedResource""
+****************/>" );
+
+				break;
+
+			case "2005":
+				if( info.chkClass ) _projectContentCS.Append( @"
+****<Compile Include=""" ).Append( Path.GetFileName(_path2Entity) + @"\").Append( _className ).Append( @".cs"" />" );
+
+				if( info.chkMapping && File.Exists(HbmGenerator._path2Maps + @"\" + xbmFile) ){ 
+					if( _projectContentXML.Length == 0 )
+						_projectContentXML.Append(	@"
+**</ItemGroup>
+**<ItemGroup>" );
+					_projectContentXML.Append(	@"
+****<EmbeddedResource Include=""" ).Append( Path.GetFileName(HbmGenerator._path2Maps) + @"\" ).Append( _className ).Append( @".hbm.xml"" />" );
+				}
+				break;
+		}
+	}
+
+	private string RemoveDBPrefix(string dbObjectName)
+	{
+		if(info.dbPrefix.Length > 0 && dbObjectName.StartsWith(info.dbPrefix))
+		{
+			return dbObjectName.Substring(info.dbPrefix.Length);
+		}
+		
+		return dbObjectName;
+	}
+	
+	private void GenerateClassFile( XmlNode nt)
+	{
+	%>/*
+<%= _myversion %>
+*/
+using System;
+
+namespace <%= _nameSpace %>.Model
+{
+	/// <summary>
+	/// <%= _className %>实体类,对应表<%=_tableName%>
+	/// </summary>
+	public class <%= _className %>  
+	{<%
+		foreach( XmlNode nc in nt.SelectNodes("c") )
+		{
+		   IColumn col = Columns[nc.Attributes["name"].Value];
+    	   string fieldType= ColumnToNHibernateType( col );
+           string accessName = nc.Attributes["alias"].Value;
+		   %>
+		/// <summary>
+        /// 获取或设置<%= accessName %>
+        /// </summary>
+		public <%= fieldType %> <%= accessName %> { get; set; }
+		<%}%>
+	}	
+}
+<%
+		_fileName = _className + ".cs";
+		
+		AddProjectFileContent();
+		
+		output.save( Path.Combine( _path2Entity, _fileName ), false );
+		output.clear();
+	}
+	
+	private void GenerateInterfacesFile( XmlNode nt)
+	{
+	%>/*
+<%= _myversion %>
+*/
+using System;
+using System.Collections.Generic;
+using <%= _nameSpace %>.Model;
+
+namespace <%= _nameSpace %>.Data
+{
+	/// <summary>
+	/// 保存<%= _className %>记录接口.
+	/// </summary>
+	public interface I<%= _className %>Repository  
+	{
+		/// <summary>
+        /// 获得<%=_tableName%>表的所有信息
+        /// </summary>
+        /// <returns></returns>
+        IList<<%= _className %>> GetAll(PagingHelper paging);
+		
+		/// <summary>
+        /// 更新<%=_className%>实体的信息
+        /// </summary>
+        /// <returns></returns>
+        int Update(<%= _className %> entity);
+		
+		/// <summary>
+        /// 增加<%=_className%>实体的信息
+        /// </summary>
+        /// <returns></returns>
+        int Add(<%= _className %> entity);
+		
+		<%BuildPrimaryKeyInterface(nt);%>
+	}	
+}
+<%
+		_fileName = "I"+_className + "Repository.cs";
+		
+		AddProjectFileContent();
+		
+		output.save( Path.Combine( _path2Interface, _fileName ), false );
+		output.clear();
+	}
+	
+	private void GenerateRepositoryFile( XmlNode nt)
+	{   
+		string primaryKey = "";
+		   
+		bool first = true;
+		foreach( XmlNode nc in nt.SelectNodes("c | id"))
+		{
+		  if( !first ) 
+		  {
+			 primaryKey +=",";
+		  }
+		  
+		  if(nc.Name=="c")
+		  {
+			IColumn field = Columns[nc.Attributes["name"].Value];
+			if( field.IsInPrimaryKey)
+			{
+				primaryKey += nc.Attributes["name"].Value;
+			}			
+          }
+        }
+	%>/*
+<%= _myversion %>
+*/
+using System;
+using System.Data;
+using System.Data.Common;
+using System.Linq;
+using System.Collections.Generic;
+
+using <%= _nameSpace %>.Model;
+
+using ComLib.Data;
+
+namespace <%= _nameSpace %>.Data
+{
+	/// <summary>
+	/// 对实体<%= _className %>的操作.
+	/// </summary>
+	public class <%= _className %>Repository :  I<%= _className %>Repository
+	{
+		/// <summary>
+        /// 获得<%=_tableName%>表的所有信息
+        /// </summary>
+        /// <returns></returns>
+        public IList<<%= _className %>> GetAll(PagingHelper paging)
+		{
+			IDatabase db = new Database(Config.DbConnectString);
+			String commndText = String.Format(@"WITH Pager AS
+				(
+				SELECT *,ROW_NUMBER() OVER(ORDER BY <%=primaryKey%>) AS RowNumber FROM <%=_tableName%>
+				) 
+				SELECT * FROM Pager WHERE RowNumber BETWEEN {0} AND {1}",paging.StartRow,paging.EndRow);
+			IList<<%= _className %>> list = db.QueryNoParams(commndText, System.Data.CommandType.Text, new <%= _className %>RowMapper());
+            return list;
+		}
+		
+		<%BuildUpdate(nt);%>
+		
+		<%BuildAdd(nt);%>
+		
+		<%BuildPrimaryKeyRepository(nt);%>
+	}	
+}
+<%
+		_fileName = _className + "Repository.cs";
+		
+		AddProjectFileContent();
+		
+		output.save( Path.Combine( _path2Repository, _fileName ), false );
+		output.clear();
+	}
+	
+	private void GenerateRowMapperFile( XmlNode nt)
+	{ 
+	%>/*
+<%= _myversion %>
+*/
+using System;
+using System.Data;
+
+using <%= _nameSpace %>.Model;
+
+using ComLib.Data;
+
+namespace <%= _nameSpace %>.Data
+{
+	/// <summary>
+    /// <%=_className%>的行Mapping类
+    /// </summary>
+    public class <%=_className%>RowMapper : RowMapperReaderBased<<%=_className%>>
+	{
+		/// <summary>
+        /// 从source中读取行数据，返回一个<%=_className%>实体
+        /// </summary>
+        /// <param name="source">数据源</param>
+        /// <param name="rowNumber">行数目</param>
+        /// <returns>返回值</returns>
+        public override <%=_className%> MapRow(IDataReader source, int rowNumber)
+        {
+			<%=_className%> entity = new <%=_className%>();<%
+			string typeName;
+			foreach( XmlNode nc in nt.SelectNodes("c | id"))
+			{		
+				if(nc.Name=="c")
+				{
+					IColumn field = Columns[nc.Attributes["name"].Value];
+					typeName= ColumnToNHibernateType( field );
+					output.write(string.Format("\r\n\t\t\tentity.{0} = ({1})source[\"{2}\"];",
+						nc.Attributes["alias"].Value,
+						typeName,
+						nc.Attributes["name"].Value));		
+				}
+			}
+			%>
+			
+			return entity;
+		}
+	}
+}
+<%
+		_fileName = _className + "RowMapper.cs";
+		
+		AddProjectFileContent();
+		
+		output.save( Path.Combine( _path2RowMapper, _fileName ), false );
+		output.clear();
+	}
+	
+	private string BuildUpdate(XmlNode nt)
+	{
+		string sql = "UPDATE "+_tableName+" SET ";
+		string keyField = "";
+		string exeStr = "";
+		
+		bool first = true;
+		bool first2 = true;
+		string typeName;
+		int count = 0;
+		foreach( XmlNode nc in nt.SelectNodes("c | id"))
+		{
+	      typeName= nc.Attributes["name"].Value;
+		  if(nc.Name=="c")
+		  {
+			IColumn field = Columns[nc.Attributes["name"].Value];
+			typeName= ColumnToNHibernateType( field );
+			if( !field.IsInPrimaryKey)
+			{
+				if( !first ) 
+				{
+					sql += ",";
+				}
+				first = false;
+				count++;
+				
+				sql += String.Format("{0}=@{1}",nc.Attributes["name"].Value,nc.Attributes["alias"].Value);
+				if( count > 5 ){
+					sql += "\r\n\t\t\t\t\t\t\t\t";
+					count = 0;
+				}
+			}
+			else
+			{
+				if( keyField != "")
+				{
+					keyField += ",";
+				}
+				keyField += String.Format("{0}=@{1}",nc.Attributes["name"].Value,nc.Attributes["alias"].Value);
+			}
+			
+			if( !first2 )
+			{
+				exeStr += ",\r\n\t\t\t\t";
+			}
+			exeStr += String.Format("db.BuildInParam(\"{0}\",{1},entity.{0})",
+				nc.Attributes["alias"].Value,
+				ColumnToDbTypeType(field));	
+				
+			first2 = false;
+          }
+        }
+		
+		sql += " WHERE "+keyField;
+		
+		%>
+		/// <summary>
+        /// 更新<%=_className%>实体的信息
+        /// </summary>
+        /// <returns></returns>
+        public int Update(<%= _className %> entity)
+		{
+			IDatabase db = new Database(Config.DbConnectString);
+			string commandText = @"<%=sql%>";
+			return db.ExecuteNonQueryText(commandText,
+				<%=exeStr%>
+			);
+		}
+		<%
+		
+		return sql;
+	}
+	
+	private string BuildAdd(XmlNode nt)
+	{
+		string fields = "";
+		string values = "";
+		string exeStr = "";
+
+		
+		bool first = true;
+
+		int count = 0;
+		foreach( XmlNode nc in nt.SelectNodes("c | id"))
+		{
+		  if(nc.Name=="c")
+		  {
+			IColumn field = Columns[nc.Attributes["name"].Value];
+			if( field.IsAutoKey ) 
+				continue;
+				
+			if( !first ) 
+			{
+				fields += ",";
+				values += ",";
+				exeStr += ",\r\n\t\t\t\t";
+			}
+			fields += nc.Attributes["name"].Value;
+			values += "@"+nc.Attributes["alias"].Value;
+
+			exeStr += String.Format("db.BuildInParam(\"{0}\",{1},entity.{0})",
+				nc.Attributes["alias"].Value,
+				ColumnToDbTypeType(field));	
+				
+			first = false;
+          }
+        }
+		
+		string sql = String.Format("INSERT INTO {0}({1}) VALUES({2})",_tableName,fields,values);
+		
+		%>
+		/// <summary>
+        /// 增加<%=_className%>实体的信息
+        /// </summary>
+        /// <returns></returns>
+        public int Add(<%= _className %> entity)
+		{
+			IDatabase db = new Database(Config.DbConnectString);
+			string commandText = "<%=sql%>";
+			return db.ExecuteNonQueryText(commandText,
+				<%=exeStr%>
+			);
+		}
+		<%
+		
+		return sql;
+	}
+	
+
+	private string FieldsPrimaryKeyConstructor(XmlNode nt)
+	{
+	   if( _createReadOnly )
+	       return "";
+
+		string full = "";
+		string typeName = "";
+		foreach( XmlNode nc in nt.SelectNodes("id | c"))
+		{
+	      typeName= nc.Attributes["name"].Value;
+		  if(nc.Name=="c")
+		  {
+			IColumn field = Columns[nc.Attributes["name"].Value];
+			if( !field.IsInPrimaryKey) continue;
+			typeName= ColumnToNHibernateType( field );
+          }
+		  
+	      if (full != "")
+	        full += ", ";
+			
+	      full += "(" + nc.Name + ")";
+          full += typeName + ".";
+	      full += Info.ApplyPascalCase(nc.Attributes["alias"].Value);
+        }
+	
+	  return full;
+	}
+	
+	private void BuildPrimaryKeyInterface(XmlNode nt)
+	{
+		string full = "";
+		string notnull = "";
+		string pk = FieldsPrimaryKeyConstructor(nt);
+		
+		string param = "";
+		
+		if (pk == "" || pk==notnull || pk==full)
+		   return;
+		   
+		bool first = true;
+		string typeName;
+		foreach( XmlNode nc in nt.SelectNodes("c | id"))
+		{
+	      typeName= nc.Attributes["name"].Value;
+		  if(nc.Name=="c")
+		  {
+			IColumn field = Columns[nc.Attributes["name"].Value];
+			if( !field.IsInPrimaryKey) continue;
+			typeName= ColumnToNHibernateType( field );
+          }
+		  
+          if( !first ) 
+			param +=",";
+          param +=  typeName + " " + Info.ApplyPascalCase(nc.Attributes["alias"].Value) ;
+          first = false;
+        }%>/// <summary>
+        /// 根据ID删除指定记录
+        /// </summary>
+		void Delete(<%=param%>);
+		
+		/// <summary>
+        /// 根据ID获得<%=_className%>实体的信息
+        /// </summary>
+        /// <returns></returns>
+        <%= _className %> GetById(<%=param%>);
+		<%
+	}
+	
+	private void BuildPrimaryKeyRepository(XmlNode nt)
+	{		   
+		string deleteSql = "DELETE FROM " + _tableName + " WHERE " ;
+		string param = "";
+		string exeStrOfGetById = "";
+		string exeStrOfDelete = "";
+
+		string getByIdSql = "SELECT * FROM "+ _tableName + " WHERE ";
+		bool first = true;
+		string typeName;
+		foreach( XmlNode nc in nt.SelectNodes("c | id"))
+		{
+	      typeName= nc.Attributes["name"].Value;
+		  if(nc.Name=="c")
+		  {
+			IColumn field = Columns[nc.Attributes["name"].Value];
+			if( field.IsInPrimaryKey ) 
+			{
+				typeName= ColumnToNHibernateType( field );
+			
+				if( !first ) 
+				{
+					param +=",";
+					deleteSql += " AND ";
+					getByIdSql += " AND ";
+					exeStrOfGetById += "\r\n\t\t\t\t";
+					exeStrOfDelete += ",\r\n\t\t\t\t";
+				}
+				deleteSql += String.Format("{0}=@{1}",nc.Attributes["name"].Value,nc.Attributes["alias"].Value);
+				getByIdSql += String.Format("{0}=@{1}",nc.Attributes["name"].Value,nc.Attributes["alias"].Value);
+			    param +=  typeName + " " + Info.ApplyPascalCase(nc.Attributes["alias"].Value) ;
+				exeStrOfGetById += String.Format("pars.Add(db.BuildInParam(\"{0}\", {1}, {2}));",
+					nc.Attributes["alias"].Value,
+					ColumnToDbTypeType(field),
+					Info.ApplyPascalCase(nc.Attributes["alias"].Value));
+				exeStrOfDelete += String.Format("db.BuildInParam(\"{0}\", {1}, {2})",
+					nc.Attributes["alias"].Value,
+					ColumnToDbTypeType(field),
+					Info.ApplyPascalCase(nc.Attributes["alias"].Value));
+			    first = false;
+			}
+          }
+		  
+          
+        }%>/// <summary>
+        /// 根据ID删除指定记录
+        /// </summary>
+		public void Delete(<%=param%>)
+		{
+			IDatabase db = new Database(Config.DbConnectString);
+			string commandText = "<%=deleteSql%>"; 
+			db.ExecuteNonQueryText(commandText,
+				<%=exeStrOfDelete%>
+			);
+		}
+		
+		/// <summary>
+        /// 根据ID获得<%=_className%>实体的信息
+        /// </summary>
+        /// <returns></returns>
+        public <%= _className %> GetById(<%=param%>)
+		{
+			IDatabase db = new Database(Config.DbConnectString);
+			string commandText = "<%=getByIdSql%>"; 
+			
+			IList<DbParameter> pars = new List<DbParameter>();
+			<%=exeStrOfGetById%>
+			
+			return db.Query<<%= _className %>>(commandText, CommandType.Text, pars.ToArray(), new <%= _className %>RowMapper()).FirstOrDefault();
+		}
+		<%
+	}
+	
+	private string GetTypeFk(XmlNode nfk)
+	{
+		string strCollectionType = "";
+		return GetTypeFk(nfk, ref strCollectionType);
+	}
+	
+	private string GetTypeFk(XmlNode nfk, ref string pCollectionType)
+	{
+		string fieldType= "IList";
+		
+		IForeignKey fk= Info.GetFK(_workingTable, nfk);
+		TRelation tr= new TRelation(_workingTable, fk);
+		
+		if(tr.IsOneToOne){
+			fieldType = (_workingTable.Name != fk.PrimaryTable.Name)?
+				ColumnToNHibernateType(fk.PrimaryTable.PrimaryKeys[0]):fk.ForeignTable.Alias;
+			fieldType= l99_Info.ToPropertyName(fieldType);
+			} 
+		else if(_workingTable.Name != fk.PrimaryTable.Name || 
+			(tr.IsSelfReference && tr.IsManyToOne))
+			fieldType= l99_Info.ToPropertyName(fk.PrimaryTable.Alias);
+
+		if(fieldType == "IList" && info.chkUseGenerics)
+		{
+			string nm= (tr.IsManyToMany )?tr.CrossReferenceTable.Name:fk.ForeignTable.Name;
+			fieldType= "IList<"+
+				l99_Info.ToPropertyName(_database.Tables[nm].Alias)+">";
+			pCollectionType = l99_Info.ToPropertyName( _database.Tables[nm].Alias ) + "Collection";
+		}
+	
+        return fieldType;
+    }
+	
+	// nhibernate doesn't have these, so use the existing types
+	private string ColumnToNHibernateType( IColumn column )
+	{
+		string retVal = column.LanguageType;
+		
+		switch( retVal )
+		{
+			case "sbyte": retVal = "byte"; break;
+			case "uint": retVal = "int"; break;
+			case "ulong": retVal = "long"; break;
+			case "ushort": retVal = "short"; break;
+			case "bool":
+			case "decimal":
+			case "float":
+			case "byte":
+			case "short":
+			case "int":
+			case "long":
+			case "DateTime":
+				if(column.IsNullable && !column.HasDefault )
+				{
+					retVal =  retVal + _NullSufix;
+				}
+				break;
+		}
+		return retVal;
+	}
+	
+	private string ColumnToDbTypeType( IColumn column )
+	{
+		string retVal = column.LanguageType;
+		
+		switch( retVal )
+		{
+			case "sbyte": retVal = "byte"; break;
+			case "uint": retVal = "int"; break;
+			case "ulong": retVal = "long"; break;
+			case "ushort": retVal = "short"; break;
+			case "bool":
+			case "decimal":
+			case "float":
+			case "byte":
+			case "short":
+			case "long":
+				retVal = "DbType.Int64";
+				break;
+			case "int":
+				retVal = "DbType.Int32";
+				break;
+			case "string":
+				retVal = "DbType.String";
+				break;	
+			case "DateTime":
+				retVal = "DbType.DateTime";
+				break;
+		}
+		return retVal;
+	}
+}
+
+
+	public class l99_Info : Info
+	{
+		public static bool _chkApplyPascalCase;
+	
+		public l99_Info(string f) : base(f) { }
+        public l99_Info(XmlDocument xml) : base(xml) { }
+		public ArrayList chooseViews {get { return ArrayList("views/it");}}
+
+		public String chooseDatabase { get { return Value("chooseDatabase"); } set { SetValue("chooseDatabase", value); } }
+		public String outputPath { get { return Value("outputPath"); } set { SetValue("outputPath", value); } }
+		public String classNamespace { get { return Value("classNamespace"); } set { SetValue("classNamespace", value); } }
+		public String assemblyName { get { return Value("assemblyName"); } set { SetValue("assemblyName", value); } }
+		public String inheritFrom { get { return Value("inheritFrom"); } set { SetValue("inheritFrom", value); } }
+		public String timestampClass { get { return Value("timestampClass"); } set { SetValue("timestampClass", value); } }
+		public String createdDateColumn { get { return Value("createdDateColumn"); } set { SetValue("createdDateColumn", value); } }
+		public String memberPrefix { get { return Value("memberPrefix"); } set { SetValue("memberPrefix", value); } }
+		public String dbPrefix { get { return Value("dbPrefix"); } set { SetValue("dbPrefix", value); } }
+
+		// project generation
+		public bool generateProjectFile { get { return Bool("chkGenerateProjectFile"); } set { SetValue("chkGenerateProjectFile", value); } }
+		public String ideVersion { get { return Value("dlIDEVersion"); } set { SetValue("dlIDEVersion", value); } }
+
+		public bool chkMapping2_2 { get { return Bool("chkMapping2_2"); } set { SetValue("chkMapping2_2", value); } }
+		public bool chkMapping { get { return Bool("chkMapping"); } set { SetValue("chkMapping", value); } }
+        public bool chkIncTables { get { return Bool("chkIncTables"); } set { SetValue("chkIncTables", value); } }
+        public bool chkIncViews { get { return Bool("chkIncViews"); } set { SetValue("chkIncViews", value); } }
+		public bool chkClass { get { return Bool("chkClass"); } set { SetValue("chkClass", value); } }
+		public bool chkOneMappFile { get { return Bool("chkOneMappFile"); } set { SetValue("chkOneMappFile", value); } }
+		public bool chkUseNull { get { return Bool("chkUseNull"); } set { SetValue("chkUseNull", value); } }
+		public bool chkEqualsHashCode { get { return Bool("chkEqualsHashCode"); } set { SetValue("chkEqualsHashCode", value); } }
+		public bool chkSerializeCode { get { return Bool("chkSerializeCode"); } set { SetValue("chkSerializeCode", value); } }
+		public bool chkLazyClass { get { return Bool("chkLazyClass"); } set { SetValue("chkLazyClass", value); } }
+		public bool chkReadOnly { get { return Bool("chkReadOnly"); } set { SetValue("chkReadOnly", value); } }
+		public bool chkRepository { get { return Bool("chkRepository"); } set { SetValue("chkRepository", value); } }
+		public bool chkEnableNullTypes { get { return Bool("chkEnableNullTypes"); } set { SetValue("chkEnableNullTypes", value); } }
+		public bool chkCOMVisible { get { return Bool("chkCOMVisible"); } set { SetValue("chkCOMVisible", value); } }
+		public bool chkApplyPascalCase { get { return Bool("chkApplyPascalCase"); } set { SetValue("chkApplyPascalCase", value); } }
+		public bool chkUseGenerics { get { return Bool("chkUseGenerics"); } set { SetValue("chkUseGenerics", value); } }
+		public bool chkImplementICloneable { get { return Bool("chkImplementICloneable"); } set { SetValue("chkImplementICloneable", value); } }
+
+		public String this[String index]
+		{
+			get { return Value(index); }
+			set { SetValue(index, value); }
+		}
+	
+	}
+
+
+	public class Info
+	{
+		private XmlDocument xml;
+		private string filename;
+
+        public XmlDocument doc { get { return xml; } }
+        public String FileName { get { return filename; } set { filename = value; } }
+
+        public Info() { this.xml = new XmlDocument(); }
+        public Info(XmlDocument xml) { this.xml = xml; }
+        public Info(string filename)
+		{
+			this.filename = filename;
+			xml = new XmlDocument();
+			try
+			{
+				xml.Load(filename);
+			}
+			catch (Exception)
+			{
+				RemoveAll();
+			}
+		}
+		public bool HasValues
+		{//is file loaded?? 
+			get { return xml.DocumentElement.ChildNodes.Count > 0; }
+		}
+		public XmlNode AppendChild(XmlNode nd,string name)
+		{
+			return nd.AppendChild(xml.CreateElement(name, nd.OwnerDocument.DocumentElement.NamespaceURI));
+		}
+		public XmlNode AppendChild(string name)
+		{
+            return xml.DocumentElement.AppendChild(xml.CreateElement(name, xml.DocumentElement.NamespaceURI));
+		}
+		public void RemoveAll() { xml.RemoveAll(); xml.LoadXml("<p/>"); }
+		public ArrayList ArrayList(string name)
+		{
+			ArrayList lst = new ArrayList();
+			XmlNodeList nds = xml.DocumentElement.SelectNodes(name);
+			if (nds != null) foreach (XmlNode nd in nds) lst.Add(nd.FirstChild.Value);
+			return lst;
+		}
+		public void Save()
+		{
+			XmlWriterSettings settings = new XmlWriterSettings();
+			settings.Indent = true;
+			XmlWriter xw;
+			xw = XmlWriter.Create(filename, settings);
+			
+			xml.WriteTo(xw);
+			xw.Close();
+		}
+		public string Value(string name)
+		{
+			return Value(xml.DocumentElement, name);
+		}
+		public bool Bool(string name)
+		{
+			return Bool(name, false);
+		}
+		public bool Bool(string name, bool def)
+		{
+			string v = Value(name);
+			return (v == String.Empty) ? def : bool.Parse(v);
+		}
+		public string Value(XmlNode nd, string name)
+		{
+			XmlNode nv;
+			if ((nv = nd.SelectSingleNode(name)) != null && nv.FirstChild!=null)
+				return nv.FirstChild.Value;
+			return String.Empty;
+		}
+
+        public XmlNode SetValue(String name) { return SetValue(xml.DocumentElement, name, null); }
+        public XmlNode SetValue(String name, object o) { return SetValue(xml.DocumentElement, name, o); }
+
+		public XmlNode SetValue(XmlNode nd, String name, object o)
+		{
+			String val = o == null ? String.Empty : o.ToString();
+			XmlNode elem = nd.SelectSingleNode(name);
+			if(elem==null)
+                elem = nd.OwnerDocument.CreateElement(name, nd.OwnerDocument.DocumentElement.NamespaceURI);
+			elem.RemoveAll();
+			if (val != String.Empty)
+			{
+				
+				if (val.IndexOfAny(new char[] { '&', '>', '<', '"' }) < 0)
+					elem.AppendChild(nd.OwnerDocument.CreateTextNode(val));
+				else
+					elem.AppendChild(nd.OwnerDocument.CreateCDataSection(val));
+			}
+			nd.AppendChild(elem);
+			return elem;
+
+		}
+
+        public XmlNode AddValue(String name)
+        { return AddValue(xml.DocumentElement, name, null); }
+		
+        public XmlNode AddValue(XmlNode nd, String name)
+        { return AddValue(nd, name, null); }
+
+		public XmlNode AddValue(XmlNode nd, String name, object o)
+		{
+            XmlNode elem = nd.OwnerDocument.CreateElement(name, nd.OwnerDocument.DocumentElement.NamespaceURI);
+			if(o != null && (o is XmlNode))
+			{
+				nd.InsertAfter(elem, (XmlNode)o);
+			} else
+			{
+				String val = o == null ? String.Empty : o.ToString();			
+				if (val != String.Empty)
+				{
+					if (val.IndexOfAny(new char[] { '&', '>', '<', '"' }) < 0)
+						elem.AppendChild(nd.OwnerDocument.CreateTextNode(val));
+					else
+						elem.AppendChild(nd.OwnerDocument.CreateCDataSection(val));
+				}
+				nd.AppendChild(elem);
+			}
+            return elem;
+		}
+
+        public XmlAttribute AddAtt(string name, string val)
+        {
+            return AddAtt(null, name, val);
+        }
+
+        public XmlAttribute AddAtt(XmlNode nd, string name, string val)
+        {
+			if (val == String.Empty) return null;
+			if (nd == null) nd = xml.DocumentElement;
+            XmlAttribute att = nd.OwnerDocument.CreateAttribute(name);
+            att.Value = val;
+            nd.Attributes.Append(att);
+            return att;
+        }
+
+        public static string ToPropertyName(string name)
+        {
+			return ToPascalCase(name.Replace(" ", String.Empty));
+        }
+
+		public static string ApplyPascalCase(string name)
+		{
+			if( name.Length == 2 )
+            {
+                return name.ToLower();
+            }
+
+            string notStartingAlpha = Regex.Replace(name, "^[^a-zA-Z]+", "");
+            string workingString = ToLowerExceptCamelCase(notStartingAlpha);
+            workingString = RemoveSeparatorAndCapNext(workingString);
+            return workingString;
+		}
+
+        protected static string ToPascalCase(string name)
+        {
+			// switch loopback
+			if(!l99_Info._chkApplyPascalCase) return name;
+		
+            return ApplyPascalCase(name);
+        }
+
+        public static string RemoveSeparatorAndCapNext(string input)
+        {
+            string dashUnderscore = "-_";
+            string workingString = input;
+            char[] chars = workingString.ToCharArray();
+            int under = workingString.IndexOfAny(dashUnderscore.ToCharArray());
+            while (under > -1)
+            {
+                chars[under + 1] = Char.ToUpper(chars[under + 1], CultureInfo.InvariantCulture);
+                workingString = new String(chars);
+                under = workingString.IndexOfAny(dashUnderscore.ToCharArray(), under + 1);
+            }
+            chars[0] = Char.ToUpper(chars[0], CultureInfo.InvariantCulture);
+            workingString = new string(chars);
+            return Regex.Replace(workingString, "[-_]", "");
+
+		}
+		public static int IndexOfCol(IColumn c)
+		{
+			for (int n = 0; n < c.Table.Columns.Count; n++)
+				if (c == c.Table.Columns[n]) return n;
+			return -1;
+		}
+		public static string CheckName(IList lst, string n)
+		{
+			bool ok= false;
+			do
+			{
+				if (lst is IColumns)
+					ok = (lst as IColumns)[n] != null || (lst as IColumns)[0].Table.Alias == n;
+				if (lst is ITables)
+					ok = (lst as ITables)[n] != null;
+				if (ok)
+					n = n + "X";
+			} while (ok);
+			return n;
+		}
+        public static string ToLowerExceptCamelCase(string input)
+        {
+			if( input.Length == 2 )
+            {
+                return input.ToLower();
+            }
+			
+            char[] chars = input.ToCharArray();
+            for (int i = 0; i < chars.Length; i++)
+            {
+                int left = (i > 0 ? i - 1 : i);
+                int right = (i < chars.Length - 1 ? i + 1 : i);
+                if (i != left && i != right)
+                {
+                    if (Char.IsUpper(chars[i]) && Char.IsLetter(chars[left]) && Char.IsUpper(chars[left]))
+                    {
+                        chars[i] = Char.ToLower(chars[i], CultureInfo.InvariantCulture);
+                    }
+                    else if (Char.IsUpper(chars[i]) && Char.IsLetter(chars[right]) && Char.IsUpper(chars[right]))
+                    {
+                        chars[i] = Char.ToLower(chars[i], CultureInfo.InvariantCulture);
+                    }
+                    else if (Char.IsUpper(chars[i]) && !Char.IsLetter(chars[right]))
+                    {
+                        chars[i] = Char.ToLower(chars[i], CultureInfo.InvariantCulture);
+                    }
+                }
+            }
+            if(chars.Length>0)
+                chars[chars.Length - 1] = Char.ToLower(chars[chars.Length - 1], CultureInfo.InvariantCulture);
+            return new string(chars);
+        }
+
+        public static IForeignKey GetFK(ITable table,XmlNode nfk)
+        {
+            if (nfk.Attributes["user"] != null && Boolean.Parse(nfk.Attributes["user"].Value))
+                return new UserFk(table, nfk);
+            IForeignKey fk = table.ForeignKeys[nfk.Attributes["name"].Value];
+            if (fk!=null && nfk.Attributes["alias"] != null)
+                fk.Alias = nfk.Attributes["alias"].Value;
+            return fk;
+        }
+
+        public static IForeignKey IsColumnGenerateForeign(IColumn c)
+        {
+            foreach (IForeignKey fk in c.ForeignKeys)
+            {
+                if (fk.ForeignTable.Name == c.Table.Name)
+                {
+                    foreach (IColumn fc in fk.ForeignColumns)
+                    {
+                        if (fc.Name == c.Name)
+                        {
+                            return fk;
+                        }
+                    }
+
+                }
+            }
+            return null;
+        }
+    }
+
+
+	public class HbmGenerator
+	{
+		l99_Info info;
+		private IDatabase database;
+		bool chkReadOnly;
+		public static string _path2Maps;
+		private string _timestampClass;
+		private string _createdDateColumn;
+		
+		HbmGenerator(l99_Info info, IDatabase database)
+		{
+			this.info = info;
+			this.database = database;
+			chkReadOnly = info.chkReadOnly; 
+			_timestampClass = info.timestampClass;
+			_createdDateColumn = info.createdDateColumn;
+		}
+		void Properties(Info hbm, XmlNode nt, XmlNode iClass)
+		{
+			IColumns cols = (nt.Name == "t")?
+				database.Tables[nt.Attributes["name"].Value].Columns:
+				database.Views[nt.Attributes["name"].Value].Columns;
+
+			XmlNodeList ncs = nt.SelectNodes("c");
+			string memberPrefix = info.memberPrefix;
+			foreach (XmlNode nc in ncs)
+			{
+				IColumn c = cols[nc.Attributes["name"].Value];
+				if (nc.Attributes["id"] != null && Boolean.Parse(nc.Attributes["id"].Value))
+					continue;
+
+				string strTypeName = TypeName(c);
+				XmlNode iPro;
+				if (c.Name.ToLower() == _timestampClass.ToLower())
+				{
+					XmlNode xnID = iClass.FirstChild;
+					if(xnID.Name != "id" && xnID.Name != "composite-id") { throw new Exception("Can't add timestamp: first element of class is " + xnID.Name + " while <id> or <composite-id> expected"); }
+					iPro = hbm.AddValue(iClass, "timestamp", xnID);
+					hbm.AddAtt(iPro, "generated", "never");
+					hbm.AddAtt(iPro, "unsaved-value", "undefined");				
+				} else
+				if (strTypeName == "Timestamp")
+				{
+					iPro = hbm.AddValue(iClass, "property");
+					hbm.AddAtt(iPro, "type", "Byte[]");
+					hbm.AddAtt(iPro, "update", "false");
+					hbm.AddAtt(iPro, "insert", "false");
+				} else
+				{
+					iPro = hbm.AddValue(iClass, "property");
+					hbm.AddAtt(iPro, "type", strTypeName);					
+					if (this.chkReadOnly)
+						hbm.AddAtt(iPro, "access", "field");
+					if (!(c.IsNullable || c.HasDefault))
+						hbm.AddAtt(iPro, "not-null", "true");
+					if (c.LanguageType == "string")
+						hbm.AddAtt(iPro, "length", c.CharacterMaxLength.ToString());
+				}
+				
+				// mark CreatedDate column to not participate in inserts
+				if (c.Name.ToLower() == _createdDateColumn.ToLower())
+				{
+					hbm.AddAtt(iPro, "insert", "false");
+					hbm.AddAtt(iPro, "update", "false");
+				}
+				
+				if(this.chkReadOnly)
+					hbm.AddAtt(iPro, "name", memberPrefix + nc.Attributes["alias"].Value.ToLower());
+				else
+					hbm.AddAtt(iPro, "name", Info.ToPropertyName(c.Alias));
+				hbm.AddAtt(iPro, "column", "[" + c.Name + "]");
+			}
+		}
+
+		public IForeignKey GetFK(IDatabase database, ITable table, XmlNode nfk)
+		{
+			if (nfk.Attributes["user"] != null && Boolean.Parse(nfk.Attributes["user"].Value))
+				return new UserFk(table, nfk);
+			return table.ForeignKeys[nfk.Attributes["name"].Value];
+			
+		}
+
+		private string TypeName(IColumn c)
+		{
+			switch (c.LanguageType)
+			{
+				case "byte[]": if(c.DataTypeName.ToLower() == "timestamp") { return "Timestamp"; } else { return "Byte[]"; };
+				case "bool": return "Boolean";
+				case "decimal": return "Decimal";
+				default: return c.LanguageType;
+			}
+
+		}
+		private string TableName(string name)
+		{
+			if (name.IndexOf(' ') < 0)
+				return name;
+			return "[" + name + "]";
+		}
+
+		void BuildIdTag(Info hbm, XmlNode nt, XmlNode iClass )
+		{
+			bool isTable = nt.Name == "t";
+			ITable table = null;
+			IColumns cols = null;
+			if (isTable)
+			{
+				table = database.Tables[nt.Attributes["name"].Value];
+				cols = table.Columns;
+			}
+			else
+			{
+				cols = database.Views[nt.Attributes["name"].Value].Columns;
+			}
+
+			XmlNodeList nids;
+			XmlNode nc = nt.SelectSingleNode("id");
+			if (nc != null)
+				nids= nc.ChildNodes;
+			else			
+				nids = nt.SelectNodes("*[@id='True']");
+
+			if (nids.Count < 1)
+				return;
+			XmlNode iId;
+			bool isComposite = nids.Count > 1;
+			iId = hbm.AddValue(iClass, (isComposite) ? "composite-id" : "id");
+			if (isComposite && nc!=null)
+			{  //use a object (helper-object) as Id:
+				hbm.AddAtt(iId, "name", nc.Attributes["alias"].Value );
+				hbm.AddAtt(iId, "class", 
+					String.Format("{0}.{1},{2}", info.classNamespace,
+						nc.Attributes["name"].Value, info.assemblyName)
+					);
+			}
+			foreach (XmlNode nid in nids)
+			{
+				if (nid.Name == "c")
+				{
+					XmlNode ni = iId;
+					if (isComposite)
+						ni = hbm.AddValue(iId, "key-property");
+					IColumn c = cols[nid.Attributes["name"].Value];
+					if (!this.chkReadOnly)
+						hbm.AddAtt(ni, "name", info.chkApplyPascalCase?Info.ToPropertyName(c.Alias):c.Alias);
+					else
+					{
+						hbm.AddAtt(ni, "name", info.memberPrefix + nid.Attributes["alias"].Value.ToLower());
+						hbm.AddAtt(ni, "access", "field");
+					}
+
+					hbm.AddAtt(ni, "column", c.Name);
+					hbm.AddAtt(ni, "type", TypeName(c)); 
+					if(!isComposite )
+						hbm.AddAtt(
+							hbm.AddValue(ni, "generator"),
+								"class", c.IsAutoKey ? "native" : "assigned");
+				}
+				if (nid.Name == "fk" && isTable)
+				{
+					IForeignKey fk = GetFK(database, table, nid);
+					TRelation tr = new TRelation(table, fk);
+					XmlNode ni = iId;
+					if (isComposite)
+						ni = hbm.AddValue(ni, "key-many-to-one");
+					hbm.AddAtt(ni, "name", nid.Attributes["alias"].Value);
+					if(tr.IsOneToOne)
+					{
+						XmlNode generator = hbm.AddValue(ni, "generator");
+						XmlNode prop = hbm.AddValue(generator, "param");
+						prop.InnerText = nid.Attributes["alias"].Value;
+						hbm.AddAtt(prop, "name", "property");
+						hbm.AddAtt(generator, "class", "foreign");
+					} else
+					{
+						hbm.AddAtt(ni, "class",
+								String.Format("{0}.{1},{2}", info.classNamespace,
+								Info.ToPropertyName(fk.PrimaryTable.Alias), info.assemblyName)
+								);
+					}
+					if (fk.ForeignColumns.Count > 1)
+					{
+						foreach (IColumn cc in fk.ForeignColumns)
+						{
+							hbm.AddAtt(
+								hbm.AddValue(ni, "column")
+									, "name", cc.Name);
+						}
+					}
+					else
+					{
+						hbm.AddAtt(ni, "column", fk.ForeignColumns[0].Name);
+					}
+				}
+			}
+		}
+
+		XmlNode BuildClassTag(Info hbm, XmlNode nt )
+		{
+			/*if (!hbm.doc.DocumentElement.HasChildNodes)
+				hbm.doc.DocumentElement.AppendChild(hbm.doc.CreateComment(
+				String.Format("Built with MyGeneration/Template/NHibernate (c) by Sharp 1.4\r\nbased on OHM (alvy77@hotmail.com)")
+				));*/
+
+			string table_name= nt.Attributes["name"].Value;
+			string _className;
+			if(info.chkApplyPascalCase)
+			{
+				_className = Info.ToPropertyName(nt.Attributes["alias"].Value);
+			} else
+			{
+				_className = nt.Attributes["alias"].Value;
+			}
+			XmlNode iClass = hbm.AddValue("class");//, table.Alias.Replace(" ", String.Empty));
+			if (info.chkOneMappFile)
+				hbm.AddAtt(iClass, "name", _className);
+			else
+				hbm.AddAtt(iClass, "name", String.Format("{0}.{1},{2}", info.classNamespace,_className,info.assemblyName));
+			hbm.AddAtt(iClass, "table", TableName(table_name));
+			hbm.AddAtt(iClass, "lazy", info.chkLazyClass.ToString().ToLower());
+			if (this.chkReadOnly)
+				hbm.AddAtt(iClass, "mutable", "false");
+			return iClass;
+		}
+
+		void BuildRelations(Info hbm, XmlNode nt, XmlNode iClass)
+		{
+			if (nt.Name != "t") return; //only tables
+			ITable table = database.Tables[nt.Attributes["name"].Value];
+			XmlNodeList nfks = nt.SelectNodes("fk");
+			foreach (XmlNode nfk in nfks)
+			{
+				if (nfk.Attributes["id"] != null && Boolean.Parse(nfk.Attributes["id"].Value))
+					continue;
+				IForeignKey fk = GetFK(database, table, nfk);
+				TRelation tr = new TRelation(table, fk);
+
+				if (tr.IsOneToOne)
+				{
+					XmlNode o2o = hbm.AddValue(iClass, "one-to-one");
+					hbm.AddAtt(o2o, "name", Info.ToPropertyName(nfk.Attributes["alias"].Value));
+					hbm.AddAtt(o2o, "cascade", "save-update");
+					hbm.AddAtt(o2o, "class",
+								String.Format("{0}.{1},{2}", info.classNamespace,
+									Info.ToPropertyName(tr.ForeignTable.Alias),
+									info.assemblyName)
+								);
+
+				}
+				else if (tr.IsManyToMany || tr.IsZeroToMany) //(table.Name == fk.PrimaryTable.Name)
+				{
+					XmlNode iBag = hbm.AddValue(iClass, "bag");
+					hbm.AddAtt(iBag, "name", Info.ToPropertyName(nfk.Attributes["name"].Value));
+					if (fk.ForeignColumns.Count > 1)
+					{
+						XmlNode cn = hbm.AddValue(iBag, "key");
+						foreach(IColumn c in fk.ForeignColumns)
+							hbm.AddAtt(
+								hbm.AddValue(cn, "column"),
+									"name", c.Name);
+					}
+					else
+					{
+						hbm.AddAtt(
+							hbm.AddValue(iBag, "key"),
+								"column", fk.ForeignColumns[0].Name);
+					}
+
+					if (tr.IsManyToMany)
+					{
+						hbm.AddAtt(iBag, "inverse", "false");
+						hbm.AddAtt(iBag, "table", TableName(fk.ForeignTable.Name));
+						XmlNode m2m = hbm.AddValue(iBag, "many-to-many");
+						hbm.AddAtt(m2m, "class",
+								String.Format("{0}.{1},{2}", info.classNamespace,
+									Info.ToPropertyName(tr.CrossReferenceTable.Alias),
+									info.assemblyName)
+								);
+
+						hbm.AddAtt(
+							hbm.AddValue(m2m, "column"),
+							"name", tr.LinkingColumns[0].Name);
+					}
+					else
+					{
+						hbm.AddAtt(iBag, "inverse", "true");
+						hbm.AddAtt(
+							hbm.AddValue(iBag, "one-to-many"),
+							"class",
+								String.Format("{0}.{1},{2}", info.classNamespace,
+									Info.ToPropertyName(fk.ForeignTable.Alias), info.assemblyName)
+								);
+					}
+					hbm.AddAtt(iBag, "lazy", "true");
+					hbm.AddAtt(iBag, "cascade", "all");
+				}
+				else
+				{
+					XmlNode m2o = hbm.AddValue(iClass, "many-to-one");
+					hbm.AddAtt(m2o, "name", nfk.Attributes["alias"].Value);
+					hbm.AddAtt(m2o, "cascade", "none");
+					if (fk.ForeignColumns.Count == 1)
+					{
+						IColumn c = fk.ForeignColumns[0];
+
+						hbm.AddAtt(m2o, "column", c.Name);
+						if (!(c.IsNullable || c.HasDefault))
+							hbm.AddAtt(m2o, "not-null", "true");
+					}
+					else
+					{
+						foreach (IColumn c in fk.ForeignColumns)
+						{
+							XmlNode col = hbm.AddValue(m2o, "column");
+							hbm.AddAtt(col, "name", c.Name);
+						}
+					}
+
+				}
+			}
+		}
+
+		void Save(Info hbm,XmlNode nt)
+		{
+			if (nt != null)
+			{
+				if (!info.chkOneMappFile)
+				{
+					hbm.FileName = Path.Combine(_path2Maps, nt.Attributes["alias"].Value.Replace(" ", "") + ".hbm.xml");
+					hbm.Save();
+					hbm.doc.DocumentElement.RemoveAll();
+				}
+			}
+			else
+			{
+				if (info.chkOneMappFile)
+				{
+					hbm.FileName = Path.Combine(_path2Maps, info.classNamespace + ".hbm.xml");
+					hbm.Save();
+				}
+			}
+		}
+
+		void BuildHbm(Info hbm, string xpath)
+		{
+			XmlNodeList nts = info.doc.DocumentElement.SelectNodes(xpath);
+			foreach (XmlNode nt in nts)
+			{
+				// <class> tag:
+				XmlNode iClass = BuildClassTag(hbm, nt);
+				// <id> TAG:
+				BuildIdTag(hbm, nt, iClass);
+				//<property> TAG
+				Properties(hbm, nt, iClass);
+				//<...> Relational TAG:
+				BuildRelations(hbm, nt, iClass);
+
+				Save(hbm, nt);
+			}
+		}
+
+		public void Doit()
+		{
+			if (!info.chkMapping)
+				return;
+			
+			if (info.chkOneMappFile)
+			{
+				_path2Maps = info.outputPath;
+				File.Delete(Path.Combine(_path2Maps, info.classNamespace + ".hbm.xml"));
+			}
+			else
+			{
+				_path2Maps = Path.Combine(info.outputPath, "Mappings");
+				Directory.CreateDirectory(_path2Maps);
+			}
+
+
+			Info hbm = new Info();
+			hbm.doc.AppendChild(hbm.doc.CreateElement("hibernate-mapping", 
+				info.chkMapping2_2?"urn:nhibernate-mapping-2.2":"urn:nhibernate-mapping-2.0"
+				));
+			if (info.chkOneMappFile)
+			{
+				hbm.AddAtt("namespace", info.classNamespace);
+				hbm.AddAtt("assembly", info.assemblyName);
+			}
+
+			//tables:
+			if (info.chkIncTables)
+			{
+				BuildHbm(hbm, String.Format("database[@db='{0}' and @driver='{1}']/t", 
+					database.Name, database.Root.DriverString));
+			}
+
+			// Views:
+			if (info.chkIncViews)
+			{
+				this.chkReadOnly = true;
+				BuildHbm(hbm, String.Format("database[@db='{0}' and @driver='{1}']/v",
+					database.Name, database.Root.DriverString));
+			}
+			Save(hbm, null);
+		}
+
+		public static void Build(l99_Info info, IDatabase database)
+		{
+			//new HbmGenerator(info, database).Doit();
+		}
+	}
+ 
+
+	public class TRelation
+	{
+		UserFk ufk;
+		TableRelation tr;
+		public TRelation(ITable table, IForeignKey fk)
+		{
+			this.tr = null; ufk = fk as UserFk;
+			if( this.ufk==null)
+				this.tr = new TableRelation(table, fk);
+		}
+
+		public bool IsManyToMany
+		{
+			get {
+				if(this.tr!=null)
+					return (tr.IsManyToMany && tr.ForeignTable.Columns.Count == tr.ForeignTable.ForeignKeys.Count);
+				return ufk.IsManyToMany;
+			}
+		}
+
+		public bool IsManyToOne
+		{
+			get
+			{
+				if (this.tr == null)
+					return ufk.IsManyToOne;
+				if (!this.IsSelfReference)
+					return tr.IsManyToOne;
+				IColumn c = this.tr.PrimaryColumns[0];
+				return (c.HasDefault || c.IsNullable);
+			}
+		}
+
+		public bool IsZeroToMany
+		{
+			get
+			{
+				if (this.tr == null)
+					return ufk.IsZeroToMany;
+				if (!this.IsSelfReference)
+					return tr.IsZeroToMany;
+				IColumn c = this.tr.PrimaryColumns[0];
+				return !(c.HasDefault || c.IsNullable);
+			}
+		}
+		public bool IsOneToOne
+		{
+			get
+			{
+				return (this.tr != null)?tr.IsOneToOne:ufk.IsOneToOne;
+			}
+		}
+
+
+		public bool IsSelfReference
+		{
+			get
+			{
+				return (this.tr != null)? tr.IsSelfReference : ufk.IsSelfReference;
+			}
+		}
+
+		public ITable PrimaryTable
+		{
+			get
+			{
+				return (this.tr != null)? tr.PrimaryTable: ufk.PrimaryTable;
+			}
+		}
+		public ITable ForeignTable
+		{
+			get
+			{
+				return (this.tr != null)?tr.ForeignTable:ufk.ForeignTable;
+			}
+		}
+		public ITable CrossReferenceTable
+		{
+			get
+			{
+				return (this.tr != null)?tr.CrossReferenceTable:ufk.CrossReferenceTable;
+			}
+		}
+		public IColumns CrossReferenceColumns
+		{
+			get
+			{
+				if (this.tr != null)
+					return (tr.CrossReferenceColumns);
+				return null;
+			}
+		}
+		public IColumns LinkingColumns
+		{
+			get
+			{
+				if (this.tr != null)
+					return (tr.LinkingColumns);
+				return null;
+			}
+		}
+	}
+	public class UserCols : ArrayList,IColumns
+	{
+		public string UserDataXPath
+		{
+			get { return String.Empty; }
+		}
+
+        public IColumn this[object index]
+		{
+			get {
+				string name = index as string;
+				if (name!=null)
+				{
+					foreach (object c in this)
+					{
+						if ( ((c is IColumn)  && (c as IColumn).Name == name) ||
+                            ((c is UTable) && (c as UTable).Name == name))
+ 							return c as IColumn;
+					}
+					return null;
+				}
+				return base[(int)index] as IColumn;
+			}
+			
+		}
+	
+	}
+
+    public class UserFk : IForeignKey
+    {
+        private string _name;
+        private IColumns _fcols;
+        private ITable _ftable;
+        private IColumns _pcols;
+        private string _pkname;
+        private ITable _ptable;
+		private bool isPrimary; // false: ManyToOne, true: ZeroToMany
+		private bool _isone2one, _ism2m, _isnewobject;
+
+        public object DatabaseSpecificMetaData(string key) { return null; }
+		public UserFk(string name, ITable ptable, IColumns pcols,
+			ITable ftable, IColumns fcols, bool isPrimary)
+        {
+			this._name = name= this._pkname = Info.ToPropertyName(name);
+			this._pcols = _fcols = null;
+			this._ptable = _ftable = null;
+			this._isone2one = false;
+			this._ism2m = false;
+			if (isPrimary) this._ptable = ptable; else this._ftable = ptable;
+			this.isPrimary = isPrimary;
+			_isnewobject = true;
+            Set(pcols, ftable, fcols);
+        }
+
+
+		public UserFk(ITable table, XmlNode nfk)
+		{
+            IDatabase database= table.Database;
+			_fcols = null;
+			if (nfk.Attributes["user"] != null && !Boolean.Parse(nfk.Attributes["user"].Value))
+				return;
+			XmlNode npt = nfk.SelectSingleNode("p");
+			XmlNode nft = nfk.SelectSingleNode("f");
+			ITable ptable = database.Tables[npt.Attributes["name"].Value];
+			ITable ftable = database.Tables[nft.Attributes["name"].Value];
+
+			this._name= nfk.Attributes["name"].Value;
+			this._isone2one = nfk.Attributes["o2o"] != null && Boolean.Parse(nfk.Attributes["o2o"].Value);
+			this._ism2m = nfk.Attributes["m2m"] != null && Boolean.Parse(nfk.Attributes["m2m"].Value);
+			//
+			if(nfk.Attributes["z2m"] != null)
+				this.isPrimary =  Boolean.Parse(nfk.Attributes["z2m"].Value);				
+			else
+				this.isPrimary = (table.Name == ptable.Name);
+	
+			UserCols pcols = new UserCols();
+			UserCols fcols = new UserCols();
+			foreach (XmlNode nc in npt.SelectNodes("c"))
+				pcols.Add(ptable.Columns[nc.Attributes["name"].Value]);
+			foreach (XmlNode nc in nft.SelectNodes("c"))
+				fcols.Add(ftable.Columns[nc.Attributes["name"].Value]);
+
+
+			this._fcols = fcols;
+			this._ftable = ftable;
+			this._pcols = pcols;
+			this._ptable = ptable; 
+			//Set(pcols, ftable, fcols );
+			
+		}
+
+		
+		public bool IsPrimary { get { return isPrimary; } }
+		public bool IsOK() { return _fcols != null && _ftable != null && _pcols != null; }
+		public void Set(IColumns pcols,
+			ITable ftable, IColumns fcols
+			)
+		{
+			if (this.isPrimary)
+			{
+				_fcols = fcols;
+				_ftable = ftable;
+				_pcols = pcols;
+			}
+			else
+			{
+				_fcols = pcols;
+				_ptable = ftable;
+				_pcols = fcols;
+			}
+		}
+		public string Alias
+        {
+			get { return _name; }
+            set { _name= value; }
+        }
+
+        public IPropertyCollection AllProperties { get { return null; } }
+        public string Deferrability  { get { return String.Empty; } }
+        public string DeleteRule { get { return String.Empty; } }
+        public IColumns ForeignColumns { get { return _fcols; } }
+        public ITable ForeignTable { get { return _ftable; } }
+        public IPropertyCollection GlobalProperties { get { return null; } }
+        public string Name { get { return _name; }}
+        public IColumns PrimaryColumns { get { return _pcols; } }
+        public string PrimaryKeyName { get { return _pkname; }}
+        public ITable PrimaryTable{ get { return _ptable; } }
+        public IPropertyCollection Properties { get { return null; } }
+        public string UpdateRule { get { return String.Empty; } }
+        public string UserDataXPath { get { return String.Empty; }}
+
+
+
+		public bool IsManyToMany
+		{
+			get { return _ism2m; }
+			set { _ism2m = value; }
+		}
+
+		public bool IsNewObject
+		{
+			get { return _isnewobject; }
+			set { _isnewobject = value; }
+		}
+		public bool IsManyToOne
+		{
+			get
+			{
+				if (!this.IsManyToMany && !this.IsOneToOne)
+					return !this.isPrimary;
+				return false;
+			}
+		}
+
+		public bool IsOneToOne
+		{
+			get {return _isone2one;}
+			set { _isone2one = value; }
+		}
+
+		public bool IsZeroToMany
+		{
+			get
+			{
+				if (!this.IsManyToMany && !this.IsOneToOne)
+					return this.isPrimary;
+				return false;
+			}
+		}
+
+		public bool IsSelfReference
+		{
+			get
+			{
+				return _ftable.Name == _ptable.Name;
+			}
+		}
+
+		
+		public ITable CrossReferenceTable
+		{
+			get
+			{
+				return null;
+			}
+		}
+	
+
+    }
+ 
+
+	public class UTable 
+	{
+		private string _alias;
+		private string _name;
+		private ITable _table; //id owner
+        UTableCols _columns;
+
+		public UTable(ITable _table, bool init)
+		{
+            this._columns = new UTableCols();
+            this._table = _table;
+            
+			this._name = Info.CheckName(
+					_table.Database.Tables,
+					Info.ToPropertyName(_table.Alias) + "Id");
+			this._alias = Info.CheckName(_table.Columns, "Id");
+            if (init)
+            {
+                foreach (IColumn c in _table.PrimaryKeys)
+                {
+                    //ther order is important!!:
+                    IForeignKey fk = Info.IsColumnGenerateForeign(c);
+                    if (fk!=null)
+                    {
+                        if (this._columns.IndexOfKey(fk.Name) < 0)
+                        {
+                            fk.Alias = (fk.ForeignTable.Name == _table.Name) ? fk.PrimaryTable.Name : fk.ForeignTable.Name;
+                            TRelation tr = new TRelation(_table, fk);
+                            if (tr.IsManyToMany)
+                                fk.Alias = tr.CrossReferenceTable.Alias;
+                            this._columns.Add(fk);
+                        }
+                    }
+                    else if (this._columns.IndexOfKey(c.Name) < 0)
+                    {
+                        this._columns.Add(c);
+                    }
+                }
+
+            }
+
+		}
+
+        public static UTable Create(IDatabase database, XmlNode nfk)
+		{
+			//if (nfk.Attributes["user"] != null && !Boolean.Parse(nfk.Attributes["user"].Value))
+			//    return null;
+			UTable ut = new UTable(database.Tables[nfk.Attributes["table"].Value], false);
+            ut.Alias = nfk.Attributes["alias"].Value;
+			ut._name = nfk.Attributes["name"].Value;
+			foreach (XmlNode nc in nfk.SelectNodes("c | fk"))
+			{
+                if (nc.Name == "c")
+                {
+                    if (ut.Owner.Columns[nc.Attributes["name"].Value] == null) continue;
+                    if (nc.Attributes["alias"] != null)
+                        ut.Owner.Columns[nc.Attributes["name"].Value].Alias = nc.Attributes["alias"].Value;
+                    ut._columns.Add(ut.Owner.Columns[nc.Attributes["name"].Value]);
+                }
+                else
+                {
+                    IForeignKey fk = Info.GetFK(ut.Owner, nc);
+                    if (fk != null) 
+                        ut._columns.Add(fk);
+                }
+            }
+
+			return ut;
+		}
+
+		public ITable  Owner
+		{
+			get { return _table; }
+		}
+		public string Alias
+		{
+			get { return _alias; }
+			set { _alias = value; }
+		}
+		public string Name
+		{
+			get { return _name; }
+		}
+		public string LanguageType
+		{
+			get { return _name; }
+		}
+		public IDatabase Database { get { return _table.Database; } }
+		public string Description { get { return "Object used as ID of "+_table.Alias; } }
+        public IList Columns { get { return this._columns; } }
+		public string Type { get { return "COMPID"; } }
+		
+
+	}
+
+    public class UTableCols : ArrayList
+    {
+
+        public int IndexOfKey(string name)
+        {
+            int n = -1;
+            foreach (object c in this)
+            {
+                n++;
+                if (((c is IForeignKey) && (c as IForeignKey).Name == name) ||
+                    ((c is IColumn) && (c as IColumn).Name == name))
+                    return n;
+            }
+            return -1;
+        }
+        public object this[object index]
+        {
+            get
+            {
+                if (index is string)
+                {
+                    int n = IndexOfKey(index as string);
+                    if (n < 0)
+                        return null;
+                    return base[n];
+                }
+                if ((int)index < 0 || (int)index >= this.Count)
+                    return null;
+                return base[(int)index];
+            }
+
+        }
+
+    }
+	
+%>
+##|BODY_END
